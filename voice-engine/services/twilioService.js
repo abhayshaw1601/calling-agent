@@ -10,14 +10,12 @@
  * @returns {string} XML TwiML string
  */
 const generateStreamTwiML = (streamUrl) => {
-  // TODO: Construct and return a Twilio TwiML Voice response.
-  // 1. Use the <Connect> verb to initiate a media <Stream> pointing to streamUrl.
-  // 2. Add an optional initial greeting <Say> before the stream starts.
-  return `
-    <Response>
-      <!-- ADD TwiML structure here -->
-    </Response>
-  `;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${streamUrl}" />
+  </Connect>
+</Response>`;
 };
 
 /**
@@ -28,6 +26,8 @@ const generateStreamTwiML = (streamUrl) => {
 const updateCall = async (callSid, options) => {
   // TODO: Use Twilio SDK client to update/end the active call.
 };
+
+
 
 module.exports = {
   generateStreamTwiML,

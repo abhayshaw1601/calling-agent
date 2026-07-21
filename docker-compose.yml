@@ -1,0 +1,74 @@
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # Service 1: MongoDB Database
+  # ─────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7
+    container_name: voice-agent-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - voice-network
+
+  # ─────────────────────────────────────────────────────────────
+  # Service 2: Voice Engine (Express.js)
+  # ─────────────────────────────────────────────────────────────
+  voice-engine:
+    build:
+      context: ./voice-engine
+      dockerfile: Dockerfile
+    container_name: voice-agent-engine
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    env_file:
+      - ./voice-engine/.env
+    environment:
+      # Override MONGO_URI dynamically from the environment
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      - mongodb
+    volumes:
+      # Mount source code live so nodemon picks up file changes
+      - ./voice-engine:/app
+      # Prevent host node_modules from overwriting container's node_modules
+      - /app/node_modules
+    networks:
+      - voice-network
+
+  # ─────────────────────────────────────────────────────────────
+  # Service 3: ngrok Tunnel (Auto-exposes voice-engine to internet)
+  # ─────────────────────────────────────────────────────────────
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: voice-agent-ngrok
+    restart: unless-stopped
+    command: >
+      http voice-engine:5050 --log=stdout
+    environment:
+      # Loaded automatically from voice-engine/.env or root .env
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    ports:
+      # Expose ngrok's web inspection UI at http://localhost:4040
+      - "4040:4040"
+    depends_on:
+      - voice-engine
+    networks:
+      - voice-network
+
+# ─────────────────────────────────────────────────────────────
+# Named volume for MongoDB data persistence
+# ─────────────────────────────────────────────────────────────
+volumes:
+  mongo_data:
+
+    # ─────────────────────────────────────────────────────────────
+    # Internal Docker network so all services can talk to each other
+    # ─────────────────────────────────────────────────────────────
+networks:
+  voice-network:
+    driver: bridge

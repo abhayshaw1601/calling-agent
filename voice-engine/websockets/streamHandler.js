@@ -1,28 +1,37 @@
+const WebSocket = require('ws');
 const { initiateDeepgramStream } = require('../services/deepgramService');
-const { streamGeminiResponse } = require('../services/geminiService');
+const { streamGroqResponse } = require('../services/groqService');
 const { synthesizeTextToAudio } = require('../services/elevenLabsService');
 const CallLog = require('../models/CallLog');
 
 /**
- * Stream Handler
+ * Twilio Stream Handler
  * Handles real-time websocket connections from Twilio Media Streams,
- * routes speech to Deepgram, LLM text to ElevenLabs, and audio back to Twilio.
- * Manages barge-in (interruption) detection and pipelining.
+ * routes speech to Deepgram, LLM text to Groq, ElevenLabs TTS audio back to Twilio.
+ * Manages barge-in (interruption) detection and audio queue clearing.
  * 
  * @param {WebSocket} ws - The client websocket connection from Twilio
  */
 const handleVoiceStream = (ws) => {
-  console.log("New voice stream connection established.");
+  console.log("New Twilio voice stream connection established.");
 
   let callSid = null;
   let streamSid = null;
   let deepgramSocket = null;
+  let isAiSpeaking = false;
   
-  // Track dialogue history
+  // Dialogue context history
   const dialogueHistory = [];
 
   // TODO 1: Initialize Deepgram STT WebSocket connection
-  // deepgramSocket = initiateDeepgramStream((transcriptText) => { ... });
+  // deepgramSocket = initiateDeepgramStream((transcriptText) => {
+  //   if (isAiSpeaking) {
+  //     // BARGE-IN DETECTED: Clear Twilio audio queue
+  //     ws.send(JSON.stringify({ event: 'clear', streamSid }));
+  //     isAiSpeaking = false;
+  //   }
+  //   // Trigger streamGroqResponse(...) and pipe audio back
+  // });
 
   // Handle messages from Twilio WebSocket stream
   ws.on('message', async (message) => {
@@ -31,7 +40,7 @@ const handleVoiceStream = (ws) => {
 
       switch (data.event) {
         case 'connected':
-          console.log("Stream connected");
+          console.log("Twilio Media Stream connected.");
           break;
 
         case 'start':
@@ -39,36 +48,36 @@ const handleVoiceStream = (ws) => {
           streamSid = data.start.streamSid;
           console.log(`Stream started: CallSid: ${callSid}, StreamSid: ${streamSid}`);
           
-          // TODO 2: Initialize or update CallLog model in database
+          // TODO 2: Initialize CallLog record in database
           break;
 
         case 'media':
-          // Raw payload is mulaw audio base64 encoded
+          // Raw payload is base64 encoded mulaw 8000Hz audio
           const audioPayload = data.media.payload;
           
-          // TODO 3: Pipe the incoming voice chunk to the Deepgram STT socket
+          // TODO 3: Decode base64 and pipe binary chunk to Deepgram socket
           if (deepgramSocket && deepgramSocket.readyState === WebSocket.OPEN) {
-            // Send binary or base64 chunk to Deepgram
+            // deepgramSocket.send(Buffer.from(audioPayload, 'base64'));
           }
           break;
 
         case 'stop':
-          console.log("Stream stopped");
-          // TODO 4: Save final logs, calculate call costs, close sockets
+          console.log(`Stream stopped for CallSid: ${callSid}`);
+          // TODO 4: Save final telemetry logs, calculate call costs, close sockets
           break;
 
         default:
           break;
       }
     } catch (err) {
-      console.error("Error in stream message handling:", err);
+      console.error("Error in Twilio stream message handling:", err);
     }
   });
 
   // Handle stream disconnection
   ws.on('close', () => {
-    console.log("Voice stream connection closed.");
-    // Clean up connections
+    console.log("Twilio voice stream connection closed.");
+    if (deepgramSocket) deepgramSocket.close();
   });
 };
 
