@@ -27,9 +27,6 @@ services:
       - "5050:5050"
     env_file:
       - ./voice-engine/.env
-    environment:
-      # Override MONGO_URI dynamically from the environment
-      - MONGO_URI=${MONGO_URI}
     depends_on:
       - mongodb
     volumes:
@@ -49,9 +46,8 @@ services:
     restart: unless-stopped
     command: >
       http voice-engine:5050 --log=stdout
-    environment:
-      # Loaded automatically from voice-engine/.env or root .env
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    env_file:
+      - ./voice-engine/.env
     ports:
       # Expose ngrok's web inspection UI at http://localhost:4040
       - "4040:4040"
