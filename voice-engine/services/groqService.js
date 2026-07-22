@@ -1,32 +1,53 @@
 const Groq = require('groq-sdk');
 
-/**
- * Groq LLM Service
- * Interacts with Groq LPUs for lightning-fast streaming text responses (using LLaMA 3.1 8B / 70B models).
- */
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 /**
- * Sends conversation dialogue history and prompt to Groq, streaming back text chunks.
- * @param {Array} history - Array of { role: 'user' | 'assistant' | 'system', content: string }
- * @param {string} newPrompt - The latest user transcript
- * @param {Function} onChunk - Callback executed for every streaming text token/word received
- * @returns {Promise<string>} The complete aggregated response string
+ * Sends conversation dialogue history and prompt to groq, streaming back text chunks.
+ * @param {Array} history - array of { role: 'user' | 'assistant' | 'system', content: string }
+ * @param {string} newPrompt - the latest user transcript
+ * @param {Function} onChunk - callback executed for every streaming text token/word received
+ * @returns {Promise<string>} the complete aggregated response string
  */
 const streamGroqResponse = async (history, newPrompt, onChunk) => {
-  // TODO: Implement Groq streaming API call
-  // 1. Format messages array: [...history, { role: 'user', content: newPrompt }]
-  // 2. Call groq.chat.completions.create({
-  //      messages: formattedMessages,
-  //      model: "llama-3.1-8b-instant", // Ultra-fast model ideal for voice
-  //      stream: true,
-  //      temperature: 0.6,
-  //    });
-  // 3. Iterate through chunks using for await (const chunk of stream)
-  // 4. Trigger onChunk(chunk.choices[0]?.delta?.content || "")
-  // 5. Return full response text
-  return "";
+
+  try {
+    // format the conversation messages, appending the new message
+    const messages = [
+      {
+        role: "system",
+        content: "You are a helpful, extremely concise conversational AI voice assistant. Speak naturally, keep answers under 2 sentences, and avoid using list bullet points or markdown syntax since your output will be read aloud."
+      },
+      ...history,
+      { role: "user", content: newPrompt }
+    ];
+
+    // Call groq streaming API
+    const chatCompletion = await groq.chat.completions.create({
+      messages: messages,
+      model: "llama-3.1-8b-instant",
+      temperature: 0.5,
+      max_tokens: 150,
+      stream: true,
+    });
+
+    // iterate through chunks using async
+    let fullResponse = "";
+
+    for await (const chunk of chatCompletion) {
+      const text = chunk.choices[0].delta?.content || "";
+      if (text) {
+        fullResponse += text;
+        onChunk(text);
+      }
+    }
+
+    // Return full response text
+    return fullResponse;
+  } catch (error) {
+    console.error("Error in Groq stream:", error);
+    throw error;
+  }
 };
 
 module.exports = {
