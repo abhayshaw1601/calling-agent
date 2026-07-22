@@ -19,7 +19,6 @@ const twilioClient = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-// Connect to Database
 connectDB();
 
 app.use(express.urlencoded({ extended: true }));
@@ -30,9 +29,9 @@ app.use(express.json());
 app.post('/twilio/incoming', (req, res) => {
   const host = req.headers.host;
   const streamUrl = `wss://${host}/media-stream`;
-  
+
   console.log(`Call connected. Directing to stream URL: ${streamUrl}`);
-  
+
   const twiml = generateStreamTwiML(streamUrl);
   res.type('text/xml');
   res.send(twiml);

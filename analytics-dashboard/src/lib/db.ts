@@ -19,10 +19,10 @@ declare global {
   var mongooseCache: MongooseCache | undefined;
 }
 
-let cached = global.mongooseCache;
+let cached = (global.mongooseCache || { conn: null, promise: null }) as MongooseCache;
 
-if (!cached) {
-  cached = global.mongooseCache = { conn: null, promise: null };
+if (!global.mongooseCache) {
+  global.mongooseCache = cached;
 }
 
 async function dbConnect() {

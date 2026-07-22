@@ -1,30 +1,34 @@
-const WebSocket = require('ws');
+const { createClient } = require('@deepgram/sdk');
 
-/**
- * Deepgram STT Service
- * Establishes a WebSocket connection with Deepgram to stream real-time audio from the user 
- * and convert it to text transcription.
- */
-
-/**
- * Configures and opens a WebSocket connection to Deepgram's streaming API.
- * @param {Function} onTranscript - Callback triggered when a transcript chunk is received
- * @returns {WebSocket} Open WebSocket instance to Deepgram
- */
 const initiateDeepgramStream = (onTranscript) => {
-  // TODO: Create a WebSocket connection to:
-  // wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&interim_results=true
-  // Headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` }
-  
-  // Set up event listeners:
-  // - 'open': log success
-  // - 'message': parse transcription data, trigger onTranscript callback
-  // - 'error': log error
-  // - 'close': handle cleanup
-  
-  return null; // Return the socket connection
+  const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
+
+  const connection = deepgram.listen.live({
+    model: 'nova-2',
+    language: 'en',
+    smart_format: true,
+    encoding: 'mulaw',  //call encoding type
+    sample_rate: 8000,  // wait at 8kHz from twilio
+    channels: 1,        // mono channel
+    interim_results: true, //get interim results i.e. real time transcription
+    utterance_end_ms: 1000, //end of speech
+    vad_events: true,       // active voice detecting 
+  });
+
+  connection.on('open', () => console.log('Connected to Deepgram STT.'));
+  connection.on('close', () => console.log('Deepgram STT closed.'));
+
+  connection.on('transcript', (data) => {
+    const transcript = data.channel.alternatives[0].transcript;   // get the transcript from deepgram
+    if (transcript && data.is_final) {      // get final results
+      onTranscript(transcript); // pass the transcript to the onTranscript callback
+    }
+  });
+
+  return connection;
 };
 
 module.exports = {
   initiateDeepgramStream
 };
+
