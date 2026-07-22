@@ -5,13 +5,8 @@ const { synthesizeTextToAudio } = require('../services/elevenLabsService');
 const CallLog = require('../models/CallLog');
 
 /**
- * Twilio Stream Handler
- * Handles real-time websocket connections from Twilio Media Streams,
- * routes speech to Deepgram, LLM text to Groq, ElevenLabs TTS audio back to Twilio.
- * Manages barge-in (interruption) detection and audio queue clearing.
- * 
  * @param {WebSocket} ws - The client websocket connection from Twilio
- */
+*/
 const handleVoiceStream = (ws) => {
   console.log("New Twilio voice stream connection established.");
 
@@ -19,19 +14,69 @@ const handleVoiceStream = (ws) => {
   let streamSid = null;
   let deepgramSocket = null;
   let isAiSpeaking = false;
-  
-  // Dialogue context history
+
+  // dialogue context history
   const dialogueHistory = [];
 
-  // TODO 1: Initialize Deepgram STT WebSocket connection
-  // deepgramSocket = initiateDeepgramStream((transcriptText) => {
-  //   if (isAiSpeaking) {
-  //     // BARGE-IN DETECTED: Clear Twilio audio queue
-  //     ws.send(JSON.stringify({ event: 'clear', streamSid }));
-  //     isAiSpeaking = false;
-  //   }
-  //   // Trigger streamGroqResponse(...) and pipe audio back
-  // });
+  // helper to process user speech and generate AI response
+  const handleUserSpeech = async (transcriptText) => {
+    try {
+      console.log(`Processing finalized user speech: "${transcriptText}"`);
+
+      // Add user message to history
+      dialogueHistory.push({ role: 'user', content: transcriptText });
+
+      let sentenceBuffer = "";
+
+      // Stream response from Groq
+      const fullResponse = await streamGroqResponse(
+        dialogueHistory,
+        transcriptText,
+        async (textToken) => {
+          sentenceBuffer += textToken;
+
+          // Split response into natural phrases using punctuation markers
+          // This keeps speech synthesis natural while minimizing delay
+          if (/[.?!,;\n]/.test(textToken)) {
+            const phraseToSpeak = sentenceBuffer.trim();
+            sentenceBuffer = ""; // Reset buffer for next phrase
+
+            if (phraseToSpeak.length > 0) {
+              try {
+                isAiSpeaking = true;
+                console.log(`Synthesizing phrase: "${phraseToSpeak}"`);
+
+                // Get audio bytes from ElevenLabs
+                const audioBuffer = await synthesizeTextToAudio(phraseToSpeak);
+
+                // Send base64 audio payload back to Twilio stream
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    event: 'media',
+                    streamSid: streamSid,
+                    media: {
+                      payload: audioBuffer.toString('base64'),
+                    },
+                  }));
+                }
+              } catch (ttsError) {
+                console.error("Failed to synthesize phrase:", ttsError.message);
+              }
+            }
+          }
+        }
+      );
+
+      // Once full response completes, add it to history
+      console.log(`AI full response finished: "${fullResponse}"`);
+      dialogueHistory.push({ role: 'assistant', content: fullResponse });
+      isAiSpeaking = false;
+
+    } catch (err) {
+      console.error("Error generating AI response stream:", err);
+      isAiSpeaking = false;
+    }
+  };
 
   // Handle messages from Twilio WebSocket stream
   ws.on('message', async (message) => {
@@ -47,23 +92,39 @@ const handleVoiceStream = (ws) => {
           callSid = data.start.callSid;
           streamSid = data.start.streamSid;
           console.log(`Stream started: CallSid: ${callSid}, StreamSid: ${streamSid}`);
-          
-          // TODO 2: Initialize CallLog record in database
+
+          // Initialize Deepgram STT stream connection
+          deepgramSocket = initiateDeepgramStream((transcriptText) => {
+            // INTERRUPT THE AI IF THE USER SPEAKS WHILE AI IS SPEAKING
+            if (isAiSpeaking) {
+              console.log("Barge-in detected! Silencing AI.");
+              ws.send(JSON.stringify({
+                event: 'clear',
+                streamSid: streamSid
+              }));
+              isAiSpeaking = false;
+            }
+
+            // Trigger AI reasoning
+            handleUserSpeech(transcriptText);
+          });
           break;
 
         case 'media':
-          // Raw payload is base64 encoded mulaw 8000Hz audio
+          // Raw payload is base64 encoded mulaw 8000Hz audio from phone mic
           const audioPayload = data.media.payload;
-          
-          // TODO 3: Decode base64 and pipe binary chunk to Deepgram socket
+
+          // Decode base64 and pipe binary chunk to Deepgram socket
           if (deepgramSocket && deepgramSocket.readyState === WebSocket.OPEN) {
-            // deepgramSocket.send(Buffer.from(audioPayload, 'base64'));
+            deepgramSocket.send(Buffer.from(audioPayload, 'base64'));
           }
           break;
 
         case 'stop':
           console.log(`Stream stopped for CallSid: ${callSid}`);
-          // TODO 4: Save final telemetry logs, calculate call costs, close sockets
+          if (deepgramSocket) {
+            deepgramSocket.close();
+          }
           break;
 
         default:
@@ -77,7 +138,9 @@ const handleVoiceStream = (ws) => {
   // Handle stream disconnection
   ws.on('close', () => {
     console.log("Twilio voice stream connection closed.");
-    if (deepgramSocket) deepgramSocket.close();
+    if (deepgramSocket) {
+      deepgramSocket.close();
+    }
   });
 };
 
