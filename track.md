@@ -9,7 +9,7 @@ This document serves as a reference for the current development status, architec
 | Phase | Description | Status | Notes |
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | Phone-to-Server Audio Bridge | **Complete** | Express server running, TwiML incoming webhooks configured, and WebSocket server setup. |
-| **Phase 2** | AI Brain, Speech Pipeline & Barge-In | **In Progress** | Services (`deepgram`, `groq`, `elevenlabs`) are created with skeletons. The core connection pipeline in `streamHandler.js` is set to be implemented. |
+| **Phase 2** | AI Brain, Speech Pipeline & Barge-In | **Complete** | Deepgram STT, Groq LLM, ElevenLabs TTS, and barge-in interruption logic fully implemented and integrated in `streamHandler.js`. |
 | **Phase 3** | Telemetry, Logging & Costs | **Not Started** | Database model configured (`CallLog`), calculations pending. |
 | **Phase 4** | Next.js Analytics Dashboard | **Ready / Compiling** | Next.js structure is ready, TypeScript config setup complete, compiles successfully. |
 
@@ -47,7 +47,7 @@ graph TD
 
 * **[`docker-compose.yml`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/docker-compose.yml)**: Manages local dev orchestration (`voice-engine` on 5050, `mongodb` on 27017, and `ngrok` tunnel on 4040).
 * **[`voice-engine/server.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/server.js)**: Starts HTTP endpoints for Twilio callbacks (`/twilio/incoming`) and handles WS route upgrade (`/media-stream`).
-* **[`voice-engine/websockets/streamHandler.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/websockets/streamHandler.js)**: The heart of the audio pipeline. This is where you will write the logic connecting Twilio audio buffers to the Deepgram, Groq, and ElevenLabs APIs.
+* **[`voice-engine/websockets/streamHandler.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/websockets/streamHandler.js)**: The heart of the audio pipeline. This connects Twilio audio buffers to the Deepgram, Groq, and ElevenLabs APIs.
 * **[`voice-engine/services/twilioService.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/services/twilioService.js)**: Helper functions for generating TwiML.
 * **[`voice-engine/services/deepgramService.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/services/deepgramService.js)**: Establishes a live streaming websocket connection to Deepgram STT.
 * **[`voice-engine/services/groqService.js`](file:///c:/Users/abhay/OneDrive/Desktop/calling%20agent/voice-engine/services/groqService.js)**: Feeds dialogue to Groq to generate responses.
