@@ -11,7 +11,9 @@ This document serves as a reference for the current development status, architec
 | **Phase 1** | Phone-to-Server Audio Bridge | **Complete** | Express server running, TwiML incoming webhooks configured, and WebSocket server setup. |
 | **Phase 2** | AI Brain, Speech Pipeline & Barge-In | **Complete** | Deepgram STT, Groq LLM, ElevenLabs TTS, and barge-in interruption logic fully implemented and integrated in `streamHandler.js`. |
 | **Phase 3** | Telemetry, Logging & Costs | **Not Started** | Database model configured (`CallLog`), calculations pending. |
-| **Phase 4** | Next.js Analytics Dashboard | **Ready / Compiling** | Next.js structure is ready, TypeScript config setup complete, compiles successfully. |
+| **Phase 4** | User Auth & Billing System | **Not Started** | User database model, NextAuth integration, and wallet top-up logic. |
+| **Phase 5** | Campaign Management (CSV Upload) | **Not Started** | CSV parsing widget, Contact schema, dynamic outbound prompts. |
+| **Phase 6** | Next.js Dashboard & Live Charts | **Ready / Compiling** | Dashboard structure is ready, needs pages and components updated. |
 
 ---
 

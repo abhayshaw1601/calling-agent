@@ -6,6 +6,7 @@ const twilio = require('twilio');
 const connectDB = require('./config/db');
 const { generateStreamTwiML } = require('./services/twilioService');
 const { handleVoiceStream } = require('./websockets/streamHandler');
+const CallLog = require('./models/CallLog');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,18 +27,38 @@ app.use(express.json());
 
 // Twilio Webhook Route: Triggered when a phone call comes in (inbound)
 // Also used as the TwiML URL for outbound calls when the recipient picks up
-app.post('/twilio/incoming', (req, res) => {
+app.post('/twilio/incoming', async (req, res) => {
   const host = req.headers.host;
   const streamUrl = `wss://${host}/media-stream`;
 
-  console.log(`Call connected. Directing to stream URL: ${streamUrl}`);
+  const callSid = req.body.CallSid;
+  const fromNumber = req.body.From || 'Unknown';
+
+  console.log(`Call connected. CallSid: ${callSid}. Directing to stream: ${streamUrl}`);
+
+  try {
+    // Create call log entry in MongoDB
+    await CallLog.findOneAndUpdate(
+      { callSid },
+      {
+        callSid,
+        phoneNumber: fromNumber,
+        status: 'in-progress',
+        startTime: new Date(),
+      },
+      { upsert: true, new: true }
+    );
+  } catch (dbErr) {
+    console.error("Failed to create CallLog in DB:", dbErr.message);
+  }
 
   const twiml = generateStreamTwiML(streamUrl);
   res.type('text/xml');
   res.send(twiml);
 });
 
-// Outbound Call Route: Dials a phone number and connects it to the AI agent
+
+// outbound call route for calling any provided number
 // Usage: POST /call/start   Body: { "to": "+919876543210" }
 app.post('/call/start', async (req, res) => {
   try {
