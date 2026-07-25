@@ -60,7 +60,7 @@ const handleVoiceStream = (ws) => {
           // 3. Track Groq LLM tokens (estimated: 1.33 tokens per word)
           if (textToken) {
             const estimatedTokens = textToken.trim().split(/\s+/).filter(Boolean).length * 1.33;
-            totalToken += estimatedTokens;
+            totalTokens += estimatedTokens;
           }
 
           // Split response into natural phrases using punctuation markers
@@ -74,7 +74,7 @@ const handleVoiceStream = (ws) => {
                 console.log(`Synthesizing phrase: "${phraseToSpeak}"`);
 
                 // 4. Track ElevenLabs characters synthesized
-                totalCharacter += phraseToSpeak.length;
+                totalCharacters += phraseToSpeak.length;
 
                 // Get audio bytes from ElevenLabs
                 const audioBuffer = await synthesizeTextToAudio(phraseToSpeak);
