@@ -8,6 +8,8 @@ const { generateStreamTwiML } = require('./services/twilioService');
 const { handleVoiceStream } = require('./websockets/streamHandler');
 const CallLog = require('./models/CallLog');
 const User = require('./models/User');
+const Contact = require('./models/Contact');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +37,8 @@ app.post('/twilio/incoming', async (req, res) => {
   const callSid = req.body.CallSid;
   const fromNumber = req.body.From || 'Unknown';
   const username = req.query.username;
+  const contactId = req.query.contactId;
+  const customPrompt = req.query.customPrompt;
 
   console.log(`Call connected. CallSid: ${callSid}. Directing to stream: ${streamUrl}`);
 
@@ -48,6 +52,8 @@ app.post('/twilio/incoming', async (req, res) => {
         status: 'in-progress',
         startTime: new Date(),
         username: username,
+        contactId: contactId,
+        customPrompt: customPrompt
       },
       { upsert: true, new: true }
     );
@@ -62,45 +68,65 @@ app.post('/twilio/incoming', async (req, res) => {
 
 
 // outbound call route for calling any provided number
-// Usage: POST /call/start   Body: { "to": "+91 1234567890", "username": "testuser" }
+// Usage: POST /call/start   Body: { "to": "+91 1234567890" }
+
 app.post('/call/start', async (req, res) => {
   try {
-    const { to, username } = req.body;
+    const { to, username, contactId, customPrompt: directPrompt } = req.body;
     const host = req.headers.host;
+
     if (!username) {
       return res.status(400).json({ error: 'Missing "username" in request body.' });
     }
 
-    if (!to) {
-      return res.status(400).json({ error: 'Missing "to" phone number in request body.' });
+    let targetNumber = to;
+    let customPrompt = directPrompt || '';
+
+    // 1. If contactId is provided, retrieve name, number, and prompt
+    if (contactId) {
+      const contact = await Contact.findById(contactId);
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      targetNumber = contact.phoneNumber;
+      customPrompt = contact.customPrompt;
+
+      // Mark contact as called
+      contact.status = 'called';
+      await contact.save();
     }
 
-    // 1. Fetch user to verify balance
+    if (!targetNumber) {
+      return res.status(400).json({ error: 'Missing target phone number ("to" or "contactId").' });
+    }
+
+    // 2. Fetch user to verify balance
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // 2. Prevent dialing if balance is empty
     if (user.balance <= 0) {
       return res.status(403).json({ error: 'Insufficient funds. Please top up your wallet.' });
     }
 
-    // 3. Start call and save initial CallLog in DB
+    // 3. Start call and pass customPrompt + contactId in Twilio webhook URL query params
     const call = await twilioClient.calls.create({
-      to: to,
+      to: targetNumber,
       from: process.env.TRIAL_NUMBER,
-      url: `https://${host}/twilio/incoming?username=${username}`, // Pass username to incoming webhook
+      url: `https://${host}/twilio/incoming?username=${username}&customPrompt=${encodeURIComponent(customPrompt)}${contactId ? `&contactId=${contactId}` : ''}`,
       method: 'POST',
     });
 
     console.log(`Outbound call initiated for user ${username}. Call SID: ${call.sid}`);
     res.status(200).json({ success: true, callSid: call.sid });
+
   } catch (error) {
     console.error('Error initiating outbound call:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 
 // WebSocket Server: Route incoming Media Streams to our Stream Handler

@@ -29,6 +29,9 @@ const CallLogSchema = new mongoose.Schema({
   username: {
     type: String
   },
+  customPrompt: {
+    type: String
+  },
   costDetails: {
     twilioCost: { type: Number, default: 0 },
     deepgramCost: { type: Number, default: 0 },

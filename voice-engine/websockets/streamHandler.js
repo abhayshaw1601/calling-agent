@@ -17,6 +17,8 @@ const handleVoiceStream = (ws) => {
   let deepgramSocket = null;
   let isAiSpeaking = false;
   let startTime = null;
+  let customPrompt = "";
+
 
   // only elevenlabs and groq are token based where as twillio and deepgram is min based so we will keep track of it by timing
   let totalCharacters = 0; //elevenlabs TTS char cost
@@ -56,6 +58,7 @@ const handleVoiceStream = (ws) => {
       const fullResponse = await streamGroqResponse(
         dialogueHistory,
         transcriptText,
+        customPrompt,
         async (textToken) => {
           sentenceBuffer += textToken;
 
@@ -196,6 +199,16 @@ const handleVoiceStream = (ws) => {
           startTime = Date.now();
 
           console.log(`Stream started: CallSid: ${callSid}, StreamSid: ${streamSid} at ${startTime}`);
+
+          try {
+            const log = await CallLog.findOne({ callSid });
+            if (log && log.customPrompt) {
+              customPrompt = log.customPrompt;
+              console.log(`Loaded custom instructions for Call ${callSid}: "${customPrompt}"`);
+            }
+          } catch (err) {
+            console.error("Error loading custom prompt:", err.message);
+          }
 
           // Initialize Deepgram STT stream connection
           deepgramSocket = initiateDeepgramStream((transcriptText) => {

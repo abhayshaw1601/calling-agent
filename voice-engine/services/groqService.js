@@ -9,17 +9,19 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
  * @param {Function} onChunk - callback executed for every streaming text token/word received
  * @returns {Promise<string>} the complete aggregated response string
  */
-const streamGroqResponse = async (history, newPrompt, onChunk) => {
+const streamGroqResponse = async (history, newPrompt, customPrompt, onChunk) => {
 
   try {
+
+    const systemInstruction = customPrompt || "You are a helpful, extremely concise conversational AI voice assistant. Speak naturally, keep answers under 2 sentences, and avoid using list bullet points or markdown syntax since your output will be read aloud.";
+
     // format the conversation messages, appending the new message
     const messages = [
       {
         role: "system",
-        content: "You are a helpful, extremely concise conversational AI voice assistant. Speak naturally, keep answers under 2 sentences, and avoid using list bullet points or markdown syntax since your output will be read aloud."
+        content: systemInstruction
       },
-      ...history,
-      { role: "user", content: newPrompt }
+      ...history
     ];
 
     // Call groq streaming API

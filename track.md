@@ -12,7 +12,7 @@ This document serves as a reference for the current development status, architec
 | **Phase 2** | AI Brain, Speech Pipeline & Barge-In | **Complete** | Deepgram STT, Groq LLM, ElevenLabs TTS, and barge-in interruption logic fully implemented and integrated in `streamHandler.js`. |
 | **Phase 3** | Telemetry, Logging & Costs | **Complete** | Database model configured (`CallLog`), cost calculations, and transcript logging fully implemented. |
 | **Phase 4** | User Auth & Billing System | **Complete** | User database model, NextAuth integration, wallet top-up logic, call validation, and balance updates. |
-| **Phase 5** | Campaign Management (CSV Upload) | **Not Started** | CSV parsing widget, Contact schema, dynamic outbound prompts. |
+| **Phase 5** | Campaign Management (CSV Upload) | **Complete** | Contact schemas, CSV uploads endpoint, custom prompts, and dynamic system instruction injection in Groq. |
 | **Phase 6** | Next.js Dashboard & Live Charts | **Ready / Compiling** | Dashboard structure is ready, needs pages and components updated. |
 
 ---
