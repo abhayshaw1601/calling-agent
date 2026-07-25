@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 const { generateStreamTwiML } = require('./services/twilioService');
 const { handleVoiceStream } = require('./websockets/streamHandler');
 const CallLog = require('./models/CallLog');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +34,7 @@ app.post('/twilio/incoming', async (req, res) => {
 
   const callSid = req.body.CallSid;
   const fromNumber = req.body.From || 'Unknown';
+  const username = req.query.username;
 
   console.log(`Call connected. CallSid: ${callSid}. Directing to stream: ${streamUrl}`);
 
@@ -45,6 +47,7 @@ app.post('/twilio/incoming', async (req, res) => {
         phoneNumber: fromNumber,
         status: 'in-progress',
         startTime: new Date(),
+        username: username,
       },
       { upsert: true, new: true }
     );
@@ -59,31 +62,46 @@ app.post('/twilio/incoming', async (req, res) => {
 
 
 // outbound call route for calling any provided number
-// Usage: POST /call/start   Body: { "to": "+919876543210" }
+// Usage: POST /call/start   Body: { "to": "+91 1234567890", "username": "testuser" }
 app.post('/call/start', async (req, res) => {
   try {
-    const { to } = req.body;
+    const { to, username } = req.body;
     const host = req.headers.host;
+    if (!username) {
+      return res.status(400).json({ error: 'Missing "username" in request body.' });
+    }
 
     if (!to) {
       return res.status(400).json({ error: 'Missing "to" phone number in request body.' });
     }
 
-    // Tell Twilio to call the number and use /twilio/incoming for TwiML instructions
+    // 1. Fetch user to verify balance
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // 2. Prevent dialing if balance is empty
+    if (user.balance <= 0) {
+      return res.status(403).json({ error: 'Insufficient funds. Please top up your wallet.' });
+    }
+
+    // 3. Start call and save initial CallLog in DB
     const call = await twilioClient.calls.create({
-      to: to,                                         // Phone number to call (e.g. your mobile)
-      from: process.env.TRIAL_NUMBER,                 // Your Twilio phone number
-      url: `https://${host}/twilio/incoming`,         // TwiML webhook URL
+      to: to,
+      from: process.env.TRIAL_NUMBER,
+      url: `https://${host}/twilio/incoming?username=${username}`, // Pass username to incoming webhook
       method: 'POST',
     });
 
-    console.log(`Outbound call initiated. Call SID: ${call.sid}`);
+    console.log(`Outbound call initiated for user ${username}. Call SID: ${call.sid}`);
     res.status(200).json({ success: true, callSid: call.sid });
   } catch (error) {
     console.error('Error initiating outbound call:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // WebSocket Server: Route incoming Media Streams to our Stream Handler
 wss.on('connection', (ws, req) => {

@@ -3,6 +3,8 @@ const { initiateDeepgramStream } = require('../services/deepgramService');
 const { streamGroqResponse } = require('../services/groqService');
 const { synthesizeTextToAudio } = require('../services/elevenLabsService');
 const CallLog = require('../models/CallLog');
+const User = require('../models/User');
+
 
 /**
  * @param {WebSocket} ws - The client websocket connection from Twilio
@@ -139,6 +141,10 @@ const handleVoiceStream = (ws) => {
 
     console.log(`Finalizing Call ${callSid}: Duration: ${duration}s, Cost: $${totalCost.toFixed(5)}`);
 
+    // 1. Find the CallLog to get the associated username
+    const log = await CallLog.findOne({ callSid });
+    const username = log?.username;
+
     try {
       await CallLog.updateOne(
         { callSid },
@@ -155,8 +161,21 @@ const handleVoiceStream = (ws) => {
           }
         }
       );
+
+      // 2. Debit user wallet
+      if (username) {
+        await User.updateOne(
+          { username },
+          { $inc: { balance: -totalCost } }
+        );
+        console.log(`Wallet debited for user ${username}. Amount charged: $${totalCost.toFixed(5)}`);
+      } else {
+        console.log(`Call finalized without username (Inbound/System call). Skipping wallet debit.`);
+      }
+
+
     } catch (err) {
-      console.error("Failed to finalize CallLog:", err.message);
+      console.error("Failed to finalize CallLog & deduct balance:", err.message);
     }
   };
 
