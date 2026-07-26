@@ -138,9 +138,9 @@ const handleVoiceStream = (ws) => {
     // Rates from plan.md
     const twilioCost = (duration / 60) * 0.014;
     const deepgramCost = (duration / 60) * 0.0059;
-    const geminiCost = (totalTokens / 1000) * 0.00005; // Using geminiCost field in schema for LLM
+    const groqCost = (totalTokens / 1000) * 0.00005; // Groq LLM token cost
     const elevenlabsCost = totalCharacters * 0.00003;
-    const totalCost = twilioCost + deepgramCost + geminiCost + elevenlabsCost;
+    const totalCost = twilioCost + deepgramCost + groqCost + elevenlabsCost;
 
     console.log(`Finalizing Call ${callSid}: Duration: ${duration}s, Cost: $${totalCost.toFixed(5)}`);
 
@@ -158,7 +158,7 @@ const handleVoiceStream = (ws) => {
           costDetails: {
             twilioCost,
             deepgramCost,
-            geminiCost,
+            groqCost,
             elevenlabsCost,
             totalCost
           }
@@ -225,6 +225,71 @@ const handleVoiceStream = (ws) => {
             // Trigger AI reasoning
             handleUserSpeech(transcriptText);
           });
+
+          // Trigger dynamic initial greeting from the AI agent based on the custom prompt
+          const triggerInitialGreeting = async () => {
+            try {
+              // Wait 1 second for the stream connection to be fully ready
+              await new Promise(r => setTimeout(r, 1000));
+              
+              const systemInstruction = customPrompt || "You are a friendly sales agent for a cloud storage company called CloudVault. Greet the customer warmly and offer them a free 30-day trial of our premium plan. Keep responses under 2 sentences.";
+              
+              console.log("Generating dynamic initial greeting via Groq...");
+              
+              const Groq = require('groq-sdk');
+              const groqInstance = new Groq({ apiKey: process.env.GROQ_API_KEY });
+              
+              const chatCompletion = await groqInstance.chat.completions.create({
+                messages: [
+                  { role: "system", content: systemInstruction },
+                  { role: "user", content: "You just initiated an outbound call and the customer answered. Generate your initial opening line. Do not include any stage directions, quotes, or meta-text, just output the exact words you would speak to the customer." }
+                ],
+                model: "llama-3.1-8b-instant",
+                temperature: 0.5,
+                max_tokens: 60,
+              });
+              
+              const greetingText = chatCompletion.choices[0].message?.content?.trim() || "Hello! How can I help you today?";
+              console.log(`Generated greeting: "${greetingText}"`);
+              
+              dialogueHistory.push({ role: 'assistant', content: greetingText });
+              
+              // Save greeting to DB call log transcript
+              if (callSid) {
+                await CallLog.updateOne(
+                  { callSid },
+                  {
+                    $push: {
+                      transcript: {
+                        role: 'assistant',
+                        text: greetingText,
+                        timestamp: new Date()
+                      }
+                    }
+                  }
+                ).catch(err => console.error("Error saving dynamic greeting:", err.message));
+              }
+              
+              isAiSpeaking = true;
+              const audioBuffer = await synthesizeTextToAudio(greetingText);
+              totalCharacters += greetingText.length;
+              
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  event: 'media',
+                  streamSid: streamSid,
+                  media: {
+                    payload: audioBuffer.toString('base64'),
+                  },
+                }));
+              }
+              isAiSpeaking = false;
+            } catch (err) {
+              console.error("Failed to trigger initial greeting:", err.message);
+              isAiSpeaking = false;
+            }
+          };
+          triggerInitialGreeting();
           break;
 
         case 'media':
@@ -232,8 +297,12 @@ const handleVoiceStream = (ws) => {
           const audioPayload = data.media.payload;
 
           // Decode base64 and pipe binary chunk to Deepgram socket
-          if (deepgramSocket && deepgramSocket.readyState === WebSocket.OPEN) {
-            deepgramSocket.send(Buffer.from(audioPayload, 'base64'));
+          if (deepgramSocket) {
+            if (deepgramSocket.readyState === WebSocket.OPEN) {
+              deepgramSocket.send(Buffer.from(audioPayload, 'base64'));
+            } else {
+              console.log(`Deepgram socket not open yet. Current state: ${deepgramSocket.readyState}`);
+            }
           }
           break;
 

@@ -10,7 +10,7 @@ export interface ICallLog extends Document {
   costDetails: {
     twilioCost: number;
     deepgramCost: number;
-    geminiCost: number;
+    groqCost: number;
     elevenlabsCost: number;
     totalCost: number;
   };
@@ -52,7 +52,7 @@ const CallLogSchema: Schema = new Schema({
   costDetails: {
     twilioCost: { type: Number, default: 0 },
     deepgramCost: { type: Number, default: 0 },
-    geminiCost: { type: Number, default: 0 },
+    groqCost: { type: Number, default: 0 },
     elevenlabsCost: { type: Number, default: 0 },
     totalCost: { type: Number, default: 0 }
   },

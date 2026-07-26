@@ -1,37 +1,108 @@
 import React from 'react';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import CostChart from '@/components/CostChart';
 import VendorPie from '@/components/VendorPie';
 
+import dbConnect from '@/lib/db';
+import CallLog from '@/models/CallLog';
+
 /**
  * Overview dashboard page.
- * Loads telemetry statistics and renders the KPI cards and chart components.
+ * Server Component — queries MongoDB directly and renders KPI cards + charts.
  */
 export default async function DashboardOverview() {
-  // TODO: Fetch analytics from Next.js internal API or directly query database using Server Component features
-  // e.g.:
-  // const res = await fetch('http://localhost:3000/api/analytics', { cache: 'no-store' });
-  // const data = await res.json();
-  
-  // Skeletons / Mock local states to showcase layout structure
-  const stats = {
-    totalCalls: 120,
-    averageDuration: "1m 45s",
-    totalSpend: "$23.40",
-    timeSeriesData: [
-      { date: 'Jul 15', cost: 2.1 },
-      { date: 'Jul 16', cost: 4.5 },
-      { date: 'Jul 17', cost: 3.8 },
-      { date: 'Jul 18', cost: 5.2 },
-      { date: 'Jul 19', cost: 4.8 },
-      { date: 'Jul 20', cost: 3.0 },
-    ],
-    vendorData: {
-      twilioCost: 5.40,
-      deepgramCost: 3.60,
-      geminiCost: 4.20,
-      elevenlabsCost: 10.20
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user || !session.user.name) redirect('/login');
+
+  let stats = {
+    totalCalls: 0,
+    totalDuration: 0,
+    totalCost: 0,
+    dailyCostTimeSeries: [] as Array<{ date: string; cost: number; calls: number }>,
+    vendorCosts: { twilioCost: 0, deepgramCost: 0, groqCost: 0, elevenlabsCost: 0 },
+  };
+
+  try {
+    await dbConnect();
+    const username = session.user.name;
+
+    // 1. Aggregate totals for KPI cards
+    const totalsResult = await CallLog.aggregate([
+      { $match: { username, status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalCalls: { $sum: 1 },
+          totalDuration: { $sum: '$duration' },
+          twilioCost: { $sum: '$costDetails.twilioCost' },
+          deepgramCost: { $sum: '$costDetails.deepgramCost' },
+          groqCost: { $sum: '$costDetails.groqCost' },
+          elevenlabsCost: { $sum: '$costDetails.elevenlabsCost' },
+          totalCost: { $sum: '$costDetails.totalCost' },
+        }
+      }
+    ]);
+
+    const totals = totalsResult[0] || {
+      totalCalls: 0,
+      totalDuration: 0,
+      twilioCost: 0,
+      deepgramCost: 0,
+      groqCost: 0,
+      elevenlabsCost: 0,
+      totalCost: 0,
+    };
+
+    // 2. Daily cost time-series for the last 14 days
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const dailySeries = await CallLog.aggregate([
+      {
+        $match: {
+          username,
+          status: 'completed',
+          startTime: { $gte: fourteenDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%b %d', date: '$startTime' }
+          },
+          cost: { $sum: '$costDetails.totalCost' },
+          calls: { $sum: 1 },
+        }
+      },
+      { $sort: { '_id': 1 } },
+      { $project: { _id: 0, date: '$_id', cost: 1, calls: 1 } }
+    ]);
+
+    stats = {
+      totalCalls: totals.totalCalls,
+      totalDuration: totals.totalDuration,
+      totalCost: totals.totalCost,
+      dailyCostTimeSeries: dailySeries,
+      vendorCosts: {
+        twilioCost: totals.twilioCost,
+        deepgramCost: totals.deepgramCost,
+        groqCost: totals.groqCost,
+        elevenlabsCost: totals.elevenlabsCost,
+      }
+    };
+  } catch (err) {
+    console.error('Failed to query database analytics:', err);
+  }
+
+  // Format total duration (seconds) into human-readable string
+  const formatDuration = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
   };
 
   return (
@@ -50,17 +121,17 @@ export default async function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalCalls}</div>
-            <p className="text-xs text-neutral-500">+12% from yesterday</p>
+            <p className="text-xs text-neutral-500">Completed calls</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Call Duration</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Call Duration</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageDuration}</div>
-            <p className="text-xs text-neutral-500">Stable latency</p>
+            <div className="text-2xl font-bold">{formatDuration(stats.totalDuration)}</div>
+            <p className="text-xs text-neutral-500">Across all completed calls</p>
           </CardContent>
         </Card>
 
@@ -69,7 +140,7 @@ export default async function DashboardOverview() {
             <CardTitle className="text-sm font-medium">Total Accumulated Cost</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSpend}</div>
+            <div className="text-2xl font-bold">${stats.totalCost.toFixed(4)}</div>
             <p className="text-xs text-neutral-500">Calculated from API usage</p>
           </CardContent>
         </Card>
@@ -80,10 +151,10 @@ export default async function DashboardOverview() {
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Daily Spend Trend</CardTitle>
-            <CardDescription>Day-to-day cost timeline across all API providers</CardDescription>
+            <CardDescription>Day-to-day cost timeline across all API providers (last 14 days)</CardDescription>
           </CardHeader>
           <CardContent>
-            <CostChart data={stats.timeSeriesData} />
+            <CostChart data={stats.dailyCostTimeSeries} />
           </CardContent>
         </Card>
 
@@ -93,7 +164,7 @@ export default async function DashboardOverview() {
             <CardDescription>Visual breakdown of API infrastructure spend</CardDescription>
           </CardHeader>
           <CardContent>
-            <VendorPie data={stats.vendorData} />
+            <VendorPie data={stats.vendorCosts} />
           </CardContent>
         </Card>
       </div>

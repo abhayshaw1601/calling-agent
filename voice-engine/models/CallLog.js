@@ -35,7 +35,7 @@ const CallLogSchema = new mongoose.Schema({
   costDetails: {
     twilioCost: { type: Number, default: 0 },
     deepgramCost: { type: Number, default: 0 },
-    geminiCost: { type: Number, default: 0 },
+    groqCost: { type: Number, default: 0 },
     elevenlabsCost: { type: Number, default: 0 },
     totalCost: { type: Number, default: 0 }
   },

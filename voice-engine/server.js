@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('dns').setDefaultResultOrder('ipv4first');
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -110,11 +111,12 @@ app.post('/call/start', async (req, res) => {
       return res.status(403).json({ error: 'Insufficient funds. Please top up your wallet.' });
     }
 
-    // 3. Start call and pass customPrompt + contactId in Twilio webhook URL query params
+    // 3. Start call — use NGROK_URL env var for the public webhook Twilio can reach
+    const publicHost = process.env.NGROK_URL || `https://${host}`;
     const call = await twilioClient.calls.create({
       to: targetNumber,
       from: process.env.TRIAL_NUMBER,
-      url: `https://${host}/twilio/incoming?username=${username}&customPrompt=${encodeURIComponent(customPrompt)}${contactId ? `&contactId=${contactId}` : ''}`,
+      url: `${publicHost}/twilio/incoming?username=${username}&customPrompt=${encodeURIComponent(customPrompt)}${contactId ? `&contactId=${contactId}` : ''}`,
       method: 'POST',
     });
 

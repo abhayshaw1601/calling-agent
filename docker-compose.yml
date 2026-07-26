@@ -34,11 +34,37 @@ services:
       - ./voice-engine:/app
       # Prevent host node_modules from overwriting container's node_modules
       - /app/node_modules
+    extra_hosts:
+      - "api.deepgram.com:208.184.56.200"
+      - "api.elevenlabs.io:34.8.184.191"
+      - "api.groq.com:104.18.38.236"
     networks:
       - voice-network
 
   # ─────────────────────────────────────────────────────────────
-  # Service 3: ngrok Tunnel (Auto-exposes voice-engine to internet)
+  # Service 3: Analytics Dashboard (Next.js)
+  # ─────────────────────────────────────────────────────────────
+  analytics-dashboard:
+    build:
+      context: ./analytics-dashboard
+      dockerfile: Dockerfile
+    container_name: voice-agent-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/voice-agent-telemetry
+      - VOICE_ENGINE_URL=http://voice-engine:5050
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-super-secret-random-key-here
+    depends_on:
+      - mongodb
+      - voice-engine
+    networks:
+      - voice-network
+
+  # ─────────────────────────────────────────────────────────────
+  # Service 4: ngrok Tunnel (Auto-exposes voice-engine to internet)
   # ─────────────────────────────────────────────────────────────
   ngrok:
     image: ngrok/ngrok:latest
@@ -68,3 +94,5 @@ volumes:
 networks:
   voice-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
