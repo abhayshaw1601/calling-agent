@@ -122,6 +122,13 @@ export default function CampaignsPage() {
   const [callingId, setCallingId] = useState<string | null>(null);
   const [callMessages, setCallMessages] = useState<Record<string, { type: 'success' | 'error'; text: string }>>({});
 
+  // ─── Manual Add Form State ───────────────────────────────────────────────────
+  const [manualName, setManualName] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const [manualPrompt, setManualPrompt] = useState('');
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualMessage, setManualMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const fetchContacts = useCallback(async () => {
     try {
       const res = await fetch('/api/contacts');
@@ -163,6 +170,40 @@ export default function CampaignsPage() {
     }
   };
 
+  const handleAddManualContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualName || !manualPhone) return;
+    setManualSaving(true);
+    setManualMessage(null);
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contacts: [{
+            name: manualName,
+            phoneNumber: manualPhone,
+            customPrompt: manualPrompt,
+          }]
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setManualMessage({ type: 'success', text: `Contact "${manualName}" added successfully!` });
+        setManualName('');
+        setManualPhone('');
+        setManualPrompt('');
+        fetchContacts(); // Refresh the contact list
+      } else {
+        setManualMessage({ type: 'error', text: data.error || 'Failed to add contact.' });
+      }
+    } catch (err) {
+      setManualMessage({ type: 'error', text: 'Network error. Please try again.' });
+    } finally {
+      setManualSaving(false);
+    }
+  };
+
   const handleCallNow = async (contact: Contact) => {
     setCallingId(contact._id);
     setCallMessages(prev => { const n = { ...prev }; delete n[contact._id]; return n; });
@@ -192,74 +233,146 @@ export default function CampaignsPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-        <p className="text-neutral-500">Upload a contact list and trigger AI voice calls per contact.</p>
+        <p className="text-neutral-500">Upload a contact list or add them manually, then trigger AI voice calls.</p>
       </div>
 
-      {/* CSV Upload Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Contacts</CardTitle>
-          <CardDescription>
-            Upload a CSV file with columns: <strong>Name</strong>, <strong>PhoneNumber</strong>, <strong>CustomPrompt</strong>.
-            The CustomPrompt column sets unique AI instructions per contact.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CsvUploadZone onParsed={setParsedRows} />
+      {/* CSV Upload & Manual Add Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* CSV Upload Card */}
+        <Card className="flex flex-col h-full justify-between">
+          <CardHeader>
+            <CardTitle>Upload Contacts (CSV)</CardTitle>
+            <CardDescription>
+              Upload a CSV file with columns: <strong>Name</strong>, <strong>PhoneNumber</strong>, <strong>CustomPrompt</strong>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 flex-1">
+            <CsvUploadZone onParsed={setParsedRows} />
 
-          {/* CSV Preview */}
-          {parsedRows.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Preview — {parsedRows.length} contact(s) ready to save
-                </p>
-                <Button onClick={handleSaveContacts} disabled={saving}>
-                  {saving ? 'Saving…' : `Save ${parsedRows.length} Contact(s)`}
+            {/* CSV Preview */}
+            {parsedRows.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    Preview — {parsedRows.length} contact(s) ready
+                  </p>
+                  <Button size="sm" onClick={handleSaveContacts} disabled={saving}>
+                    {saving ? 'Saving…' : `Save ${parsedRows.length} Contact(s)`}
+                  </Button>
+                </div>
+
+                {saveMessage && (
+                  <div className={`p-2 rounded-lg text-xs font-medium ${saveMessage.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
+                      : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                    }`}>
+                    {saveMessage.text}
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs py-1.5">Name</TableHead>
+                        <TableHead className="text-xs py-1.5 font-mono">Phone</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parsedRows.slice(0, 3).map((row, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="py-1 text-xs font-medium">{row.name}</TableCell>
+                          <TableCell className="py-1 text-xs font-mono">{row.phoneNumber}</TableCell>
+                        </TableRow>
+                      ))}
+                      {parsedRows.length > 3 && (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center text-[10px] text-neutral-400 py-1">
+                            + {parsedRows.length - 3} more contact(s) not shown
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Add Contact Manually Card */}
+        <Card className="flex flex-col h-full justify-between">
+          <CardHeader>
+            <CardTitle>Add Contact Manually</CardTitle>
+            <CardDescription>Add a single contact directly into your calling campaign.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <form onSubmit={handleAddManualContact} className="space-y-4 h-full flex flex-col justify-between">
+              <div className="space-y-4">
+                {manualMessage && (
+                  <div className={`p-2.5 rounded-lg text-xs font-medium ${manualMessage.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
+                      : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                    }`}>
+                    {manualMessage.text}
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="manualName" className="block text-xs font-medium text-neutral-500 mb-1">
+                      Name
+                    </label>
+                    <input
+                      id="manualName"
+                      type="text"
+                      required
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      className="block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-sm"
+                      placeholder="Abhay"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="manualPhone" className="block text-xs font-medium text-neutral-500 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      id="manualPhone"
+                      type="text"
+                      required
+                      value={manualPhone}
+                      onChange={(e) => setManualPhone(e.target.value)}
+                      className="block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-sm font-mono"
+                      placeholder="+918520369741"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="manualPrompt" className="block text-xs font-medium text-neutral-500 mb-1">
+                    Custom AI Prompt / Instructions
+                  </label>
+                  <textarea
+                    id="manualPrompt"
+                    rows={4}
+                    value={manualPrompt}
+                    onChange={(e) => setManualPrompt(e.target.value)}
+                    className="block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-sm resize-none"
+                    placeholder="You are a friendly agent calling from CloudVault to offer a premium trial..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button type="submit" disabled={manualSaving || !manualName || !manualPhone}>
+                  {manualSaving ? 'Saving…' : 'Add Contact'}
                 </Button>
               </div>
-
-              {saveMessage && (
-                <div className={`p-3 rounded-lg text-sm font-medium ${
-                  saveMessage.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
-                    : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                }`}>
-                  {saveMessage.text}
-                </div>
-              )}
-
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone Number</TableHead>
-                      <TableHead>Custom Prompt</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {parsedRows.slice(0, 5).map((row, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{row.name}</TableCell>
-                        <TableCell className="font-mono text-sm">{row.phoneNumber}</TableCell>
-                        <TableCell className="text-sm text-neutral-500 max-w-xs truncate">{row.customPrompt}</TableCell>
-                      </TableRow>
-                    ))}
-                    {parsedRows.length > 5 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-xs text-neutral-400 py-2">
-                          + {parsedRows.length - 5} more contact(s) not shown in preview
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Contact List / Campaign Table */}
       <Card>
@@ -326,11 +439,10 @@ export default function CampaignsPage() {
                     {callMessages[contact._id] && (
                       <TableRow>
                         <TableCell colSpan={5} className="pt-0 pb-2">
-                          <div className={`px-3 py-2 rounded-lg text-xs font-medium ${
-                            callMessages[contact._id].type === 'success'
+                          <div className={`px-3 py-2 rounded-lg text-xs font-medium ${callMessages[contact._id].type === 'success'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
                               : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-                          }`}>
+                            }`}>
                             {callMessages[contact._id].text}
                           </div>
                         </TableCell>

@@ -68,6 +68,47 @@ app.post('/twilio/incoming', async (req, res) => {
 });
 
 
+// Helper to optimize raw user prompt via Groq before starting call
+const optimizeSystemPrompt = async (rawPrompt, contactName = 'Customer') => {
+  const defaultPrompt = `You are a helpful sales assistant calling ${contactName}. Start the call by saying: Hello ${contactName}, I am calling from CloudVault.`;
+  if (!rawPrompt || rawPrompt.trim() === '') {
+    return defaultPrompt;
+  }
+
+  try {
+    const Groq = require('groq-sdk');
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    console.log(`Optimizing prompt: "${rawPrompt}" for contact: "${contactName}"...`);
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional prompt engineering expert specialized in conversational AI voice agents. Your task is to take a raw user instruction for a phone call agent and rewrite it into a highly detailed, professional, structured SYSTEM PROMPT for a conversational voice agent. The optimized prompt MUST instruct the agent on personality, tone, rules (keep responses short, 1-2 sentences, conversational), and explicitly specify that the agent must greet the customer by name. For example, if the prompt is about a free trial, the system prompt should specify: 'Start the call by greeting: Hello [name], I am calling from [company] for [purpose]'. Do not output any intro, explanation, stage directions, thinking, quotes, or meta-text. Output ONLY the final system prompt."
+        },
+        {
+          role: "user",
+          content: `Optimize this raw instruction for a call to a contact named "${contactName}": "${rawPrompt}"`
+        }
+      ],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.3,
+    });
+
+    const optimized = completion.choices[0].message?.content?.trim();
+    if (optimized) {
+      console.log(`Successfully optimized prompt. Length: ${optimized.length}`);
+      return optimized;
+    }
+  } catch (err) {
+    console.error("Error in optimizeSystemPrompt:", err.message);
+  }
+
+  return rawPrompt;
+};
+
+
 // outbound call route for calling any provided number
 // Usage: POST /call/start   Body: { "to": "+91 1234567890" }
 
@@ -82,6 +123,7 @@ app.post('/call/start', async (req, res) => {
 
     let targetNumber = to;
     let customPrompt = directPrompt || '';
+    let contactName = 'Customer';
 
     // 1. If contactId is provided, retrieve name, number, and prompt
     if (contactId) {
@@ -91,6 +133,7 @@ app.post('/call/start', async (req, res) => {
       }
       targetNumber = contact.phoneNumber;
       customPrompt = contact.customPrompt;
+      contactName = contact.name;
 
       // Mark contact as called
       contact.status = 'called';
@@ -100,6 +143,9 @@ app.post('/call/start', async (req, res) => {
     if (!targetNumber) {
       return res.status(400).json({ error: 'Missing target phone number ("to" or "contactId").' });
     }
+
+    // Run prompt optimization before making the call!
+    const optimizedPrompt = await optimizeSystemPrompt(customPrompt, contactName);
 
     // 2. Fetch user to verify balance
     const user = await User.findOne({ username });
@@ -116,7 +162,7 @@ app.post('/call/start', async (req, res) => {
     const call = await twilioClient.calls.create({
       to: targetNumber,
       from: process.env.TRIAL_NUMBER,
-      url: `${publicHost}/twilio/incoming?username=${username}&customPrompt=${encodeURIComponent(customPrompt)}${contactId ? `&contactId=${contactId}` : ''}`,
+      url: `${publicHost}/twilio/incoming?username=${username}&customPrompt=${encodeURIComponent(optimizedPrompt)}${contactId ? `&contactId=${contactId}` : ''}`,
       method: 'POST',
     });
 
