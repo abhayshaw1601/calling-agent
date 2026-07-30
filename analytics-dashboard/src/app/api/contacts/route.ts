@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Contact from '@/models/Contact';
 
+export const dynamic = 'force-dynamic';
+
 // 1. GET Request: Fetch all contacts for the logged-in user
 export async function GET() {
     try {

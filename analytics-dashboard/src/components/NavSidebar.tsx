@@ -7,7 +7,7 @@ import { signOut, useSession } from 'next-auth/react';
 
 const NAV_LINKS = [
   {
-    href: '/',
+    href: '/dashboard',
     label: 'Overview',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -58,8 +58,8 @@ export default function NavSidebar() {
       .catch(() => {});
   }, [session]);
 
-  // Don't render sidebar on the login page
-  if (pathname === '/login') return null;
+  // Don't render sidebar on landing or auth pages
+  if (['/', '/login', '/signup'].includes(pathname)) return null;
 
   return (
     <aside className="w-64 min-h-screen border-r border-neutral-200 bg-white flex flex-col justify-between dark:border-neutral-800 dark:bg-neutral-950 shrink-0">
@@ -79,7 +79,7 @@ export default function NavSidebar() {
         {/* Navigation */}
         <nav className="px-3 py-4 space-y-0.5">
           {NAV_LINKS.map(({ href, label, icon }) => {
-            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
+            const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
             return (
               <Link
                 key={href}

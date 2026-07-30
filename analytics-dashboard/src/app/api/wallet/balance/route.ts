@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/wallet/balance
  * Returns the current wallet balance for the logged-in user.

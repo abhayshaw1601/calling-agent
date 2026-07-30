@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-const TOP_UP_AMOUNTS = [5, 10, 20, 50];
+const TOP_UP_AMOUNTS = [5, 10, 20]; // Replaced $50 with a custom input option
 
 export default function WalletPage() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -12,6 +12,7 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true);
   const [topUpLoading, setTopUpLoading] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [customValue, setCustomValue] = useState('');
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -30,6 +31,16 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchBalance();
+
+    // Check if a payment was interrupted by a page refresh or exit
+    const inProgress = localStorage.getItem('paymentInProgress');
+    if (inProgress === 'true') {
+      setMessage({
+        type: 'error',
+        text: 'Previous payment transaction was interrupted or cancelled.',
+      });
+      localStorage.removeItem('paymentInProgress');
+    }
   }, [fetchBalance]);
 
   const loadRazorpayScript = () => {
@@ -43,13 +54,22 @@ export default function WalletPage() {
   };
 
   const handleTopUp = async (amount: number) => {
+    if (isNaN(amount) || amount <= 0) {
+      setMessage({ type: 'error', text: 'Please enter a valid positive amount.' });
+      return;
+    }
+
     setTopUpLoading(amount);
     setMessage(null);
+
+    // Set payment-in-progress flag in localStorage
+    localStorage.setItem('paymentInProgress', 'true');
 
     // 1. Load Razorpay Checkout SDK script
     const isScriptLoaded = await loadRazorpayScript();
     if (!isScriptLoaded) {
       setMessage({ type: 'error', text: 'Failed to load Razorpay SDK. Please check your connection.' });
+      localStorage.removeItem('paymentInProgress');
       setTopUpLoading(null);
       return;
     }
@@ -96,16 +116,21 @@ export default function WalletPage() {
 
             const verifyData = await verifyRes.json();
             if (verifyRes.ok) {
+              // Success - clear tracking flag
+              localStorage.removeItem('paymentInProgress');
               setBalance(verifyData.balance);
+              setCustomValue(''); // Reset custom input on success
               setMessage({
                 type: 'success',
                 text: `+$${amount}.00 added successfully! New balance: $${verifyData.balance.toFixed(2)}`,
               });
             } else {
+              localStorage.removeItem('paymentInProgress');
               setMessage({ type: 'error', text: verifyData.error || 'Payment verification failed.' });
             }
           } catch (error) {
             console.error('Verification error:', error);
+            localStorage.removeItem('paymentInProgress');
             setMessage({ type: 'error', text: 'Error verifying payment with server.' });
           } finally {
             setTopUpLoading(null);
@@ -119,7 +144,13 @@ export default function WalletPage() {
         },
         modal: {
           ondismiss: function () {
+            // Dismissed - clear tracking flag and output error
             setTopUpLoading(null);
+            localStorage.removeItem('paymentInProgress');
+            setMessage({
+              type: 'error',
+              text: 'Transaction cancelled. The payment window was closed.',
+            });
           },
         },
       };
@@ -128,6 +159,7 @@ export default function WalletPage() {
       paymentObject.open();
     } catch (err: any) {
       console.error(err);
+      localStorage.removeItem('paymentInProgress');
       setMessage({ type: 'error', text: err.message || 'Something went wrong initiating the payment.' });
       setTopUpLoading(null);
     }
@@ -173,7 +205,7 @@ export default function WalletPage() {
       <Card>
         <CardHeader>
           <CardTitle>Add Credits</CardTitle>
-          <CardDescription>Select an amount to add to your wallet instantly.</CardDescription>
+          <CardDescription>Select a preset or enter a custom amount to add to your wallet.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {message && (
@@ -187,6 +219,7 @@ export default function WalletPage() {
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Preset Amounts */}
             {TOP_UP_AMOUNTS.map((amount) => (
               <button
                 key={amount}
@@ -211,6 +244,33 @@ export default function WalletPage() {
                 <span className="text-xs text-neutral-400 mt-0.5">USD</span>
               </button>
             ))}
+
+            {/* Custom Input Tile */}
+            <div className="relative flex flex-col items-center justify-center p-3 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 focus-within:border-blue-500 bg-transparent transition-all">
+              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Custom USD</span>
+              <div className="flex items-center w-full justify-center relative">
+                <span className="text-neutral-500 font-bold mr-1">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={customValue}
+                  onChange={(e) => setCustomValue(e.target.value)}
+                  placeholder="0.00"
+                  disabled={topUpLoading !== null}
+                  className="w-full bg-transparent border-none text-center font-bold text-lg text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-0 p-0"
+                />
+              </div>
+              {customValue && Number(customValue) > 0 && (
+                <button
+                  onClick={() => handleTopUp(Number(customValue))}
+                  disabled={topUpLoading !== null}
+                  className="mt-2 w-full py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-lg transition-all"
+                >
+                  Pay
+                </button>
+              )}
+            </div>
           </div>
 
           <p className="text-xs text-neutral-400 text-center pt-1">

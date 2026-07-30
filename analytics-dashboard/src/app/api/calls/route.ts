@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import CallLog from '@/models/CallLog';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/calls
  * Returns all call logs for the logged-in user, sorted newest first.

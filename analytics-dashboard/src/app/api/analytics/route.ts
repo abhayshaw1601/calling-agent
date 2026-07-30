@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import CallLog from '@/models/CallLog';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/analytics
  * Fetches aggregated call telemetry for the logged-in user:
