@@ -32,25 +32,103 @@ export default function WalletPage() {
     fetchBalance();
   }, [fetchBalance]);
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleTopUp = async (amount: number) => {
     setTopUpLoading(amount);
     setMessage(null);
+
+    // 1. Load Razorpay Checkout SDK script
+    const isScriptLoaded = await loadRazorpayScript();
+    if (!isScriptLoaded) {
+      setMessage({ type: 'error', text: 'Failed to load Razorpay SDK. Please check your connection.' });
+      setTopUpLoading(null);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/wallet/topup', {
+      // 2. Generate Razorpay Order ID from backend
+      const orderResponse = await fetch('/api/payment/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setBalance(data.balance);
-        setMessage({ type: 'success', text: `+$${amount}.00 added successfully! New balance: $${data.balance.toFixed(2)}` });
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Top-up failed.' });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create payment order');
       }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
-    } finally {
+
+      const orderData = await orderResponse.json();
+
+      if (!orderData.id) {
+        throw new Error('Order creation did not return a valid ID');
+      }
+
+      // 3. Configure Razorpay checkout options
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Calling Credits Top-Up',
+        description: `Adding $${amount}.00 to your wallet`,
+        order_id: orderData.id,
+        handler: async function (response: any) {
+          try {
+            setTopUpLoading(amount);
+            // 4. Verify transaction cryptographically on backend
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok) {
+              setBalance(verifyData.balance);
+              setMessage({
+                type: 'success',
+                text: `+$${amount}.00 added successfully! New balance: $${verifyData.balance.toFixed(2)}`,
+              });
+            } else {
+              setMessage({ type: 'error', text: verifyData.error || 'Payment verification failed.' });
+            }
+          } catch (error) {
+            console.error('Verification error:', error);
+            setMessage({ type: 'error', text: 'Error verifying payment with server.' });
+          } finally {
+            setTopUpLoading(null);
+          }
+        },
+        prefill: {
+          name: username || '',
+        },
+        theme: {
+          color: '#2563EB',
+        },
+        modal: {
+          ondismiss: function () {
+            setTopUpLoading(null);
+          },
+        },
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ type: 'error', text: err.message || 'Something went wrong initiating the payment.' });
       setTopUpLoading(null);
     }
   };
@@ -136,7 +214,7 @@ export default function WalletPage() {
           </div>
 
           <p className="text-xs text-neutral-400 text-center pt-1">
-            This is a mock payment system — no real charges are made.
+            Payments securely processed via Razorpay.
           </p>
         </CardContent>
       </Card>

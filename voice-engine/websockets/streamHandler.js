@@ -18,6 +18,7 @@ const handleVoiceStream = (ws) => {
   let isAiSpeaking = false;
   let startTime = null;
   let customPrompt = "";
+  let isCallFinalized = false;
 
 
   // only elevenlabs and groq are token based where as twillio and deepgram is min based so we will keep track of it by timing
@@ -130,7 +131,8 @@ const handleVoiceStream = (ws) => {
   };
 
   const finalizeCallLog = async () => {
-    if (!callSid || !startTime) return;
+    if (isCallFinalized || !callSid || !startTime) return;
+    isCallFinalized = true;
 
     const endTime = new Date();
     const duration = Math.max(0, Math.round((endTime - startTime) / 1000)); // In seconds

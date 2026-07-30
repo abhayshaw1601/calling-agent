@@ -1,13 +1,34 @@
 # AI Voice Agent Campaign Manager
 
+![Next.js](https://img.shields.io/badge/Next.js-v14.2.3-black?style=flat-square)
+![Node.js](https://img.shields.io/badge/Node.js-Active-green?style=flat-square)
+![Twilio](https://img.shields.io/badge/Twilio-Voice_API-red?style=flat-square)
+![Deepgram](https://img.shields.io/badge/Deepgram-STT-blue?style=flat-square)
+![Groq](https://img.shields.io/badge/Groq-Llama_3.1-orange?style=flat-square)
+![ElevenLabs](https://img.shields.io/badge/ElevenLabs-TTS-yellow?style=flat-square)
+![Razorpay](https://img.shields.io/badge/Razorpay-Payments-blue?style=flat-square)
+![MongoDB](https://img.shields.io/badge/MongoDB-Persisted-green?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)
+
 A production-ready outbound calling and campaign management system. It features a Next.js 14 Web UI to manage contacts and view call analytics, combined with a Node.js voice engine orchestrating real-time, low-latency, two-way conversational voice calls using Twilio, Deepgram STT, Groq LLM, and ElevenLabs TTS.
+
+## Tech Stack Details
+
+* **Next.js (v14.2.3)**: High-performance dashboard for viewing call analytics, metrics, and managing campaigns.
+* **Node.js**: The real-time backend voice engine driving high-performance SIP audio connections.
+* **Twilio**: Cloud communications platform handles outbound dialing and handles WebSocket media streams.
+* **Deepgram**: Ultra-low-latency real-time voice speech-to-text transcription.
+* **Groq (Llama 3.1)**: Conversational LLM reasoning engine to deliver human-like response streaming.
+* **ElevenLabs**: High-fidelity text-to-speech audio synthesis.
+* **Razorpay**: Secure payment gateway for wallet top-ups and credits.
+* **MongoDB (Mongoose)**: Document database for user accounts, balances, and persistent call log history.
 
 ---
 
 ## Architecture Overview
 
 The system consists of three main components running in a Dockerized environment:
-1. **Next.js Dashboard**: Enables user login, wallet top-ups, campaign CSV parsing, manual contact creation, and real-time visualization of call spend metrics.
+1. **Next.js Dashboard**: Enables user login, Razorpay wallet top-ups, campaign CSV parsing, manual contact creation, and real-time visualization of call spend metrics.
 2. **Node.js Voice Engine**: Orchestrates the active SIP call WebSocket stream and manages API calls to AI providers.
 3. **MongoDB Database**: Serves as the shared state store for contacts, user balances, and finalized call logs/billing.
 
@@ -19,6 +40,7 @@ graph TD
     Engine <-->|WebSocket STT| Deepgram[Deepgram STT API]
     Engine <-->|REST API / TTS| ElevenLabs[ElevenLabs TTS API]
     Dashboard[Next.js Analytics Dashboard] <-->|Read/Write| MongoDB[(MongoDB)]
+    Dashboard <-->|Create Orders / Verify Signature| Razorpay[Razorpay Payment API]
     Engine <-->|Read/Write| MongoDB
     Dashboard <-->|Trigger Outbound Call| Engine
 ```
@@ -70,6 +92,37 @@ sequenceDiagram
     Engine->>MongoDB: Finalize logs, calculate costs, debit wallet balance
 ```
 
+### Wallet Top-Up Sequence (Razorpay)
+
+The diagram below details the step-by-step payment processing and secure wallet balance top-up flow.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User as User (Browser)
+    participant UI as Dashboard Wallet Page
+    participant API as Next.js API Routes
+    participant RZP as Razorpay Gateway
+    participant DB as MongoDB (User Balance)
+
+    User->>UI: Select credit amount (e.g. $10)
+    UI->>API: POST /api/payment/order { amount: 10 }
+    API->>API: Fetch live USD to INR exchange rate
+    API->>RZP: Create Order (amountInINR * 100 paise)
+    RZP-->>API: Return Order ID
+    API-->>UI: Return Order Details & metadata
+    UI->>User: Launch Razorpay Standard Checkout Popup
+    User->>RZP: Choose UPI/Card/Netbanking & pay
+    RZP-->>UI: Return Payment Signature, Payment ID & Order ID
+    UI->>API: POST /api/payment/verify { signature, payment_id, order_id }
+    API->>API: Cryptographically verify signature
+    API->>RZP: Fetch Order metadata from Razorpay API
+    API->>DB: Securely increment user balance by usdAmount
+    DB-->>API: Return updated balance
+    API-->>UI: Return success & new balance
+    UI->>User: Show success & update real-time UI balance
+```
+
 ---
 
 ## Setup Guide
@@ -105,6 +158,10 @@ sequenceDiagram
    VOICE_ENGINE_URL=http://localhost:5050
    NEXTAUTH_URL=http://localhost:3000
    NEXTAUTH_SECRET=your_nextauth_jwt_signing_secret
+   
+   # Razorpay API Credentials
+   NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
+   RAZORPAY_KEY_SECRET=your_razorpay_key_secret
    ```
 
 ### Step 2: Spin Up the Stack with Docker Compose
