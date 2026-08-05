@@ -178,14 +178,10 @@ export default function SignupPage() {
                 </div>
 
                 {/* Social Login */}
-                <div className="w-full grid grid-cols-2 gap-4">
-                    <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+                <div className="w-full">
+                    <button className="w-full flex justify-center items-center py-2.5 px-4 border border-outline-variant rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
                         <span className="material-symbols-outlined text-[18px] mr-2">login</span>
                         Google
-                    </button>
-                    <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
-                        <span className="material-symbols-outlined text-[18px] mr-2">code</span>
-                        GitHub
                     </button>
                 </div>
 
