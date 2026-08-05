@@ -2,17 +2,11 @@ import React from 'react';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import CostChart from '@/components/CostChart';
-import VendorPie from '@/components/VendorPie';
+import DashboardGrid from '@/components/DashboardGrid';
 
 import dbConnect from '@/lib/db';
 import CallLog from '@/models/CallLog';
 
-/**
- * Overview dashboard page.
- * Server Component — queries MongoDB directly and renders KPI cards + charts.
- */
 export default async function DashboardOverview() {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.name) redirect('/login');
@@ -24,6 +18,8 @@ export default async function DashboardOverview() {
     dailyCostTimeSeries: [] as Array<{ date: string; cost: number; calls: number }>,
     vendorCosts: { twilioCost: 0, deepgramCost: 0, groqCost: 0, elevenlabsCost: 0 },
   };
+
+  let recentCalls: any[] = [];
 
   try {
     await dbConnect();
@@ -93,81 +89,42 @@ export default async function DashboardOverview() {
         elevenlabsCost: totals.elevenlabsCost,
       }
     };
+
+    // 3. Query 5 most recent calls for Activity Log
+    const rawCalls = await CallLog.find({ username })
+      .sort({ startTime: -1 })
+      .limit(5);
+
+    recentCalls = rawCalls.map(c => ({
+      _id: c._id.toString(),
+      phoneNumber: c.phoneNumber,
+      status: c.status,
+      duration: c.duration,
+      costDetails: {
+        totalCost: c.costDetails?.totalCost || 0
+      },
+      startTime: c.startTime.toISOString()
+    }));
+
   } catch (err) {
     console.error('Failed to query database analytics:', err);
   }
 
-  // Format total duration (seconds) into human-readable string
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}m ${s}s`;
-  };
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-        <p className="text-neutral-500">Real-time metrics for your automated voice engine</p>
+      <div className="flex items-end justify-between border-b border-outline-variant pb-4">
+        <div>
+          <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">Overview</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">AI Voice Agent performance &amp; infrastructure metrics.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-label-md text-label-md text-on-surface-variant">Last 14 Days</span>
+          <span className="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+        </div>
       </div>
 
-      {/* KPI Stats Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Calls Handled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCalls}</div>
-            <p className="text-xs text-neutral-500">Completed calls</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Call Duration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatDuration(stats.totalDuration)}</div>
-            <p className="text-xs text-neutral-500">Across all completed calls</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Accumulated Cost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalCost.toFixed(4)}</div>
-            <p className="text-xs text-neutral-500">Calculated from API usage</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recharts Analytics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Daily Spend Trend</CardTitle>
-            <CardDescription>Day-to-day cost timeline across all API providers (last 14 days)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CostChart data={stats.dailyCostTimeSeries} />
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Cost Split by Vendor</CardTitle>
-            <CardDescription>Visual breakdown of API infrastructure spend</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <VendorPie data={stats.vendorCosts} />
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardGrid stats={stats} recentCalls={recentCalls} />
     </div>
   );
 }

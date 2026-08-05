@@ -42,3 +42,7 @@ Thumbs.db
 *.swo
 .agents/*
 skills-lock.json
+
+
+#stich
+stitch-screens/

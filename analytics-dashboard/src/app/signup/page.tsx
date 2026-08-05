@@ -58,102 +58,121 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 px-4">
-            <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-neutral-950 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-lg">
-                <div className="text-center">
-                    <h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-                        Create Account
-                    </h2>
-                    <p className="mt-2 text-sm text-neutral-500">
-                        Sign up to manage outbound voice campaigns
-                    </p>
+        <div className="min-h-screen w-full flex items-center justify-center bg-surface-container p-4">
+            <main className="w-full max-w-md bg-surface-card rounded-xl shadow-soft p-8 border border-outline-variant flex flex-col items-center">
+                {/* Header / Logo */}
+                <div className="mb-8 flex flex-col items-center text-center">
+                    <h1 className="font-headline-lg text-[28px] font-bold text-primary mb-2 tracking-tight">SnowVoice AI</h1>
+                    <h2 className="font-headline-md text-headline-md text-on-surface font-semibold">Create Account</h2>
+                    <p className="font-body-md text-body-md text-on-surface-variant mt-1.5">Sign up to manage outbound voice campaigns.</p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="w-full space-y-5">
                     {error && (
-                        <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm text-center">
+                        <div className="p-3 bg-error-container border border-error/20 text-error rounded-lg text-sm text-center font-medium">
                             {error}
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                Username
-                            </label>
+                    {/* Username Input */}
+                    <div>
+                        <label className="block font-label-md text-label-md text-on-surface mb-1.5" htmlFor="username">Username</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">person</span>
+                            </div>
                             <input
+                                className="block w-full pl-10 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface font-body-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-on-surface-variant/40"
                                 id="username"
-                                type="text"
+                                name="username"
+                                placeholder="john_doe"
                                 required
+                                type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-neutral-900 dark:text-neutral-100"
-                                placeholder="john_doe"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                Email Address
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-neutral-900 dark:text-neutral-100"
-                                placeholder="john@example.com"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-neutral-900 dark:text-neutral-100"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                                Confirm Password
-                            </label>
-                            <input
-                                id="confirmPassword"
-                                type="password"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-transparent text-neutral-900 dark:text-neutral-100"
-                                placeholder="••••••••"
                             />
                         </div>
                     </div>
 
+                    {/* Email Input */}
+                    <div>
+                        <label className="block font-label-md text-label-md text-on-surface mb-1.5" htmlFor="email">Email Address</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">mail</span>
+                            </div>
+                            <input
+                                className="block w-full pl-10 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface font-body-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-on-surface-variant/40"
+                                id="email"
+                                name="email"
+                                placeholder="john@example.com"
+                                required
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Password Input */}
+                    <div>
+                        <label className="block font-label-md text-label-md text-on-surface mb-1.5" htmlFor="password">Password</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">lock</span>
+                            </div>
+                            <input
+                                className="block w-full pl-10 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface font-body-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-on-surface-variant/40"
+                                id="password"
+                                name="password"
+                                placeholder="••••••••"
+                                required
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Confirm Password Input */}
+                    <div>
+                        <label className="block font-label-md text-label-md text-on-surface mb-1.5" htmlFor="confirmPassword">Confirm Password</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">lock_reset</span>
+                            </div>
+                            <input
+                                className="block w-full pl-10 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface font-body-md focus:ring-2 focus:ring-primary focus:border-primary transition-colors placeholder-on-surface-variant/40"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                placeholder="••••••••"
+                                required
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Submit Button */}
                     <button
+                        className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-soft font-semibold text-label-md text-on-primary bg-primary hover:bg-inverse-surface focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors mt-6 disabled:opacity-50"
                         type="submit"
                         disabled={loading}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                     >
                         {loading ? 'Creating Account...' : 'Sign Up'}
                     </button>
-
-                    <div className="text-center text-sm text-neutral-500 mt-4">
-                        Already have an account?{' '}
-                        <Link href="/login" className="text-blue-600 hover:underline">
-                            Sign In
-                        </Link>
-                    </div>
                 </form>
-            </div>
+
+                {/* Footer Link */}
+                <p className="mt-8 font-body-sm text-body-sm text-on-surface-variant text-center w-full">
+                    Already have an account?{' '}
+                    <Link className="font-label-md text-label-md text-primary font-semibold hover:underline transition-all" href="/login">
+                        Sign In
+                    </Link>
+                </p>
+            </main>
         </div>
     );
 }

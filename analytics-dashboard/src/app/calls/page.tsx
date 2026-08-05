@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent } from '@/components/ui/dialog';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import Link from 'next/link';
 
 interface TranscriptEntry {
   role: 'user' | 'assistant' | 'system';
@@ -34,8 +29,6 @@ interface CallRecord {
   transcript: TranscriptEntry[];
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const formatDuration = (seconds: number) => {
   if (!seconds || seconds === 0) return '0s';
   const m = Math.floor(seconds / 60);
@@ -43,7 +36,7 @@ const formatDuration = (seconds: number) => {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 };
 
-const formatCost = (cost: number) => `$${(cost || 0).toFixed(5)}`;
+const formatCost = (cost: number) => `$${(cost || 0).toFixed(4)}`;
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
@@ -58,22 +51,19 @@ const formatTime = (dateStr: string) => {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-  failed: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  'in-progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  initiated: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  ringing: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+const STATUS_TAG_CLASSES: Record<string, string> = {
+  completed: 'bg-accent-mint text-trend-up border border-trend-up/20',
+  failed: 'bg-error-container text-on-error-container border border-error/20',
+  'in-progress': 'bg-accent-blue text-secondary border border-secondary/20',
+  initiated: 'bg-accent-yellow text-on-tertiary-fixed border border-outline-variant/30',
+  ringing: 'bg-accent-yellow text-on-tertiary-fixed border border-outline-variant/30',
 };
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CallLogsPage() {
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchCalls = async () => {
@@ -94,149 +84,186 @@ export default function CallLogsPage() {
     fetchCalls();
   }, []);
 
-  const handleRowClick = (call: CallRecord) => {
-    setSelectedCall(call);
-    setDialogOpen(true);
-  };
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Call Logs</h1>
-        <p className="text-neutral-500">View history, transcripts, and cost breakdowns for all your calls</p>
-      </div>
+      
+      {/* Call History Card Container */}
+      <div className="bg-surface-card rounded-xl p-card-padding shadow-soft border border-outline-variant flex flex-col min-h-[500px]">
+        <div className="flex items-center justify-between border-b border-surface-container pb-4 mb-6">
+          <div>
+            <h3 className="font-headline-md text-headline-md font-bold text-on-surface">Call Logs History</h3>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+              Click on any call row to inspect the full transcript history and detailed vendor cost breakdown.
+            </p>
+          </div>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-          <CardDescription>Click on any row to inspect the full transcript and cost details.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        {/* Call Logs Table */}
+        <div className="flex-1 overflow-x-auto">
           {loading ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">Loading call logs…</div>
+            <div className="h-full flex items-center justify-center text-on-surface-variant text-sm py-16 animate-pulse">
+              Loading calling logs database...
+            </div>
           ) : error ? (
-            <div className="py-16 text-center text-red-500 text-sm">{error}</div>
+            <div className="h-full flex items-center justify-center text-error text-sm py-16 font-semibold">
+              {error}
+            </div>
           ) : calls.length === 0 ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">
-              No calls found. Start a campaign to see logs appear here.
+            <div className="h-full flex flex-col items-center justify-center text-on-surface-variant text-sm py-16 text-center">
+              <span className="material-symbols-outlined text-[48px] text-on-surface-variant/40 mb-3">history</span>
+              <p className="font-medium text-on-surface">No calls executed yet</p>
+              <p className="text-xs text-on-surface-variant/70 mt-1 max-w-xs">Logs will populate dynamically here once campaigns generate active calling streams.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Call SID</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Start Time</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead className="text-right">Total Cost</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-surface-container text-label-md font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                  <th className="pb-3 pr-2">Call SID</th>
+                  <th className="pb-3 px-2">Phone Number</th>
+                  <th className="pb-3 px-2">Status</th>
+                  <th className="pb-3 px-2">Date &amp; Start Time</th>
+                  <th className="pb-3 px-2">Duration</th>
+                  <th className="pb-3 pl-2 text-right">Total Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-container">
                 {calls.map((call) => (
-                  <TableRow
-                    key={call._id}
-                    className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
-                    onClick={() => handleRowClick(call)}
+                  <tr 
+                    key={call._id} 
+                    onClick={() => setSelectedCall(call)}
+                    className="group hover:bg-surface-container-lowest transition-colors text-body-md text-on-surface cursor-pointer"
                   >
-                    <TableCell className="font-mono text-xs text-neutral-500">{call.callSid}</TableCell>
-                    <TableCell className="font-medium">{call.phoneNumber}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[call.status] || 'bg-neutral-100 text-neutral-600'}`}>
+                    <td className="py-3.5 pr-2 font-mono text-[12px] text-on-surface-variant group-hover:text-primary transition-colors">
+                      {call.callSid}
+                    </td>
+                    <td className="py-3.5 px-2 font-medium">{call.phoneNumber}</td>
+                    <td className="py-3.5 px-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${STATUS_TAG_CLASSES[call.status] || 'bg-surface-container text-on-surface-variant'}`}>
                         {call.status}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-neutral-500">{formatDate(call.startTime)}</TableCell>
-                    <TableCell>{formatDuration(call.duration)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCost(call.costDetails?.totalCost)}</TableCell>
-                  </TableRow>
+                    </td>
+                    <td className="py-3.5 px-2 text-xs text-on-surface-variant font-medium">{formatDate(call.startTime)}</td>
+                    <td className="py-3.5 px-2 text-xs text-on-surface-variant font-medium">{formatDuration(call.duration)}</td>
+                    <td className="py-3.5 pl-2 text-right font-bold text-sm text-primary">
+                      {formatCost(call.costDetails?.totalCost)}
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Call Details Modal */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          {selectedCall && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Call Details</DialogTitle>
-                <DialogDescription>
-                  SID: <span className="font-mono text-xs">{selectedCall.callSid}</span>
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="mt-4 space-y-5">
-                {/* Metadata Grid */}
+      {/* Slide drawer / overlay modal for inspecting transcripts */}
+      {selectedCall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-tertiary/40 backdrop-blur-sm">
+          <div className="bg-surface-card w-full max-w-xl h-full p-8 shadow-xl border-l border-outline-variant flex flex-col justify-between animate-in slide-in-from-right duration-300">
+            <div>
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h4 className="font-semibold text-sm mb-2">Metadata</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm bg-neutral-50 dark:bg-neutral-900 p-3 rounded-md">
-                    <div><span className="text-neutral-500">Number:</span> <strong>{selectedCall.phoneNumber}</strong></div>
-                    <div><span className="text-neutral-500">Status:</span> <strong>{selectedCall.status}</strong></div>
-                    <div><span className="text-neutral-500">Started:</span> <strong>{formatDate(selectedCall.startTime)}</strong></div>
-                    <div><span className="text-neutral-500">Duration:</span> <strong>{formatDuration(selectedCall.duration)}</strong></div>
-                  </div>
+                  <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface">Call Inspection Details</h2>
+                  <p className="font-mono text-[11px] text-on-surface-variant mt-1">SID: {selectedCall.callSid}</p>
                 </div>
+                <button 
+                  className="p-1 rounded-full hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors"
+                  onClick={() => setSelectedCall(null)}
+                >
+                  <span className="material-symbols-outlined text-[24px]">close</span>
+                </button>
+              </div>
 
-                {/* Cost Breakdown */}
+              {/* Metadata Summary Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6 bg-surface-container-low p-4 rounded-xl border border-outline-variant/60">
                 <div>
-                  <h4 className="font-semibold text-sm mb-2">Cost Breakdown</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm bg-neutral-50 dark:bg-neutral-900 p-3 rounded-md">
-                    {[
-                      { label: 'Twilio', value: selectedCall.costDetails?.twilioCost },
-                      { label: 'Deepgram', value: selectedCall.costDetails?.deepgramCost },
-                      { label: 'Groq', value: selectedCall.costDetails?.groqCost },
-                      { label: 'ElevenLabs', value: selectedCall.costDetails?.elevenlabsCost },
-                    ].map(({ label, value }) => (
-                      <div key={label}><span className="text-neutral-500">{label}:</span> <strong>{formatCost(value || 0)}</strong></div>
-                    ))}
-                    <div className="col-span-2 border-t border-neutral-200 dark:border-neutral-700 pt-2 mt-1">
-                      <span className="text-neutral-500">Total:</span> <strong className="text-base">{formatCost(selectedCall.costDetails?.totalCost)}</strong>
-                    </div>
-                  </div>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Phone Number</span>
+                  <span className="text-body-md font-semibold text-primary block mt-0.5">{selectedCall.phoneNumber}</span>
                 </div>
-
-                {/* Transcript */}
                 <div>
-                  <h4 className="font-semibold text-sm mb-2">
-                    Transcript <span className="font-normal text-neutral-400">({selectedCall.transcript.length} messages)</span>
-                  </h4>
-                  <div className="space-y-3 max-h-64 overflow-y-auto border border-neutral-200 dark:border-neutral-800 p-3 rounded-md">
-                    {selectedCall.transcript.length > 0 ? (
-                      selectedCall.transcript
-                        .filter(msg => msg.role !== 'system')
-                        .map((msg, index) => (
-                          <div key={index} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                            <span className="text-[10px] text-neutral-400 capitalize mb-0.5">
-                              {msg.role} · {formatTime(msg.timestamp)}
-                            </span>
-                            <div className={`p-2.5 rounded-xl text-sm max-w-[85%] leading-relaxed ${
-                              msg.role === 'user'
-                                ? 'bg-neutral-900 text-neutral-50 dark:bg-neutral-700'
-                                : 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100'
-                            }`}>
-                              {msg.text}
-                            </div>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-neutral-400 text-center italic py-4">No transcript recorded for this call.</p>
-                    )}
-                  </div>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Duration</span>
+                  <span className="text-body-md font-semibold text-primary block mt-0.5">{formatDuration(selectedCall.duration)}</span>
                 </div>
-
-                <div className="flex justify-end pt-1">
-                  <Button onClick={() => setDialogOpen(false)}>Close</Button>
+                <div>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Status</span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase mt-1 ${STATUS_TAG_CLASSES[selectedCall.status] || 'bg-surface-container text-on-surface-variant'}`}>
+                    {selectedCall.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Start Date</span>
+                  <span className="text-body-md font-semibold text-primary block mt-0.5">{formatDate(selectedCall.startTime)}</span>
                 </div>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+
+              {/* Vendor Cost Breakdowns */}
+              <div className="mb-6">
+                <h4 className="font-label-md text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-2.5">Vendor Cost Splitting</h4>
+                <div className="grid grid-cols-2 gap-3 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant/80 font-medium">Twilio (PSTN):</span>
+                    <span className="text-xs font-semibold text-primary ml-1.5">{formatCost(selectedCall.costDetails?.twilioCost)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant/80 font-medium">Deepgram STT:</span>
+                    <span className="text-xs font-semibold text-primary ml-1.5">{formatCost(selectedCall.costDetails?.deepgramCost)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant/80 font-medium">Groq LLM:</span>
+                    <span className="text-xs font-semibold text-primary ml-1.5">{formatCost(selectedCall.costDetails?.groqCost)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant/80 font-medium">ElevenLabs TTS:</span>
+                    <span className="text-xs font-semibold text-primary ml-1.5">{formatCost(selectedCall.costDetails?.elevenlabsCost)}</span>
+                  </div>
+                  <div className="col-span-2 border-t border-surface-container pt-2.5 mt-1 flex justify-between items-baseline">
+                    <span className="text-xs font-bold text-primary">Aggregate Cost:</span>
+                    <span className="text-base font-bold text-secondary">{formatCost(selectedCall.costDetails?.totalCost)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call Dialog/Transcript */}
+              <div>
+                <h4 className="font-label-md text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-2.5">
+                  Dialogue Transcript ({selectedCall.transcript.filter(msg => msg.role !== 'system').length} exchanges)
+                </h4>
+                <div className="space-y-3 max-h-[250px] overflow-y-auto border border-outline-variant p-4 rounded-xl bg-surface-container-low">
+                  {selectedCall.transcript.length > 0 ? (
+                    selectedCall.transcript
+                      .filter(msg => msg.role !== 'system')
+                      .map((msg, index) => (
+                        <div key={index} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                          <span className="text-[9px] text-on-surface-variant/70 font-semibold uppercase mb-0.5">
+                            {msg.role === 'user' ? 'Customer' : 'Voice Agent'} · {formatTime(msg.timestamp)}
+                          </span>
+                          <div className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-white rounded-tr-none'
+                              : 'bg-surface-card text-on-surface rounded-tl-none border border-outline-variant/60 shadow-soft'
+                          }`}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="text-xs text-on-surface-variant/60 text-center italic py-6">No active dialogue stream recorded.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-surface-container">
+              <button 
+                onClick={() => setSelectedCall(null)}
+                className="px-5 py-2.5 bg-primary hover:bg-inverse-surface text-on-primary font-semibold text-label-md rounded-lg transition-colors"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
