@@ -50,8 +50,8 @@ export default function NavSidebar() {
     <aside className="w-sidebar-width h-full fixed left-0 top-0 bg-surface-container-lowest shadow-soft flex flex-col p-4 border-r border-outline-variant z-20">
       {/* Brand */}
       <div className="mb-8 px-2 flex items-center gap-3">
-        <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary">
-          <span className="material-symbols-outlined text-[20px]">mic</span>
+        <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center shrink-0 border border-outline-variant/30">
+          <img src="/logo.png" alt="SnowVoice AI" className="w-full h-full object-cover" />
         </div>
         <div>
           <div className="font-headline-md text-headline-md font-bold text-primary leading-tight">SnowVoice AI</div>
@@ -103,25 +103,23 @@ export default function NavSidebar() {
         )}
 
         {/* User profile & sign out */}
-        {session?.user && (
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {session.user.name?.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs font-semibold text-primary truncate">
-                {session.user.name}
-              </span>
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {(session?.user?.name || 'User').charAt(0).toUpperCase()}
             </div>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-on-surface-variant hover:text-error transition-colors shrink-0 ml-2"
-              title="Sign out"
-            >
-              <span className="material-symbols-outlined text-[20px]">logout</span>
-            </button>
+            <span className="text-xs font-semibold text-primary truncate">
+              {session?.user?.name || 'User'}
+            </span>
           </div>
-        )}
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="text-on-surface-variant hover:text-error transition-colors shrink-0 ml-2"
+            title="Sign out"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+          </button>
+        </div>
         <p className="text-[10px] text-on-surface-variant/60 text-center">v1.0.0</p>
       </div>
     </aside>

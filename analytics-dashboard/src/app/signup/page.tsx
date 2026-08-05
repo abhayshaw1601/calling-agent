@@ -165,6 +165,30 @@ export default function SignupPage() {
                     </button>
                 </form>
 
+                {/* Divider */}
+                <div className="w-full mt-8 mb-6">
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-outline-variant"></div>
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-surface-card font-body-sm text-body-sm text-on-surface-variant">Or continue with</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Social Login */}
+                <div className="w-full grid grid-cols-2 gap-4">
+                    <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+                        <span className="material-symbols-outlined text-[18px] mr-2">login</span>
+                        Google
+                    </button>
+                    <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors" type="button">
+                        <span className="material-symbols-outlined text-[18px] mr-2">code</span>
+                        GitHub
+                    </button>
+                </div>
+
                 {/* Footer Link */}
                 <p className="mt-8 font-body-sm text-body-sm text-on-surface-variant text-center w-full">
                     Already have an account?{' '}

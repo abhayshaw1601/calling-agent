@@ -36,3 +36,16 @@ body {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
 }
+
+.draw-line {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawLine 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+

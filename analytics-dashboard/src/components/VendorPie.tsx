@@ -100,6 +100,9 @@ export default function VendorPie({ data }: VendorPieProps) {
           outerRadius={90}
           paddingAngle={3}
           dataKey="value"
+          isAnimationActive={true}
+          animationDuration={1000}
+          animationEasing="ease-in-out"
         >
           {chartDataWithPercent.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />

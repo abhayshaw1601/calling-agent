@@ -5,8 +5,8 @@ import AuthProvider from "@/components/SessionProvider";
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
 
 export const metadata: Metadata = {
-  title: "AI Voice Agent Campaign Manager",
-  description: "Real-time cost analysis, wallet credits and campaign management for AI voice agents",
+  title: "SnowVoice AI - Campaign Manager",
+  description: "Real-time cost analysis, wallet credits, and campaign management for SnowVoice AI agents",
 };
 
 export default function RootLayout({
