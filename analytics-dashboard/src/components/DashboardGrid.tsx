@@ -132,7 +132,7 @@ export default function DashboardGrid({ stats, recentCalls }: DashboardGridProps
           </div>
           <div className="mt-auto h-12 w-full relative">
             <svg className="w-full h-full preserve-aspect-none" fill="none" stroke="currentColor" style={{ padding: '2px' }} viewBox="0 0 100 30">
-              <path className="text-secondary stroke-2 draw-line" d="M0,22 Q10,25 20,18 T40,15 T60,8 T80,12 T100,5" strokeLinecap="round" stroke-linejoin="round"></path>
+              <path className="text-secondary stroke-2 draw-line" d="M0,22 Q10,25 20,18 T40,15 T60,8 T80,12 T100,5" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function DashboardGrid({ stats, recentCalls }: DashboardGridProps
           </div>
           <div className="mt-auto h-12 w-full relative">
             <svg className="w-full h-full preserve-aspect-none" fill="none" stroke="currentColor" style={{ padding: '2px' }} viewBox="0 0 100 30">
-              <path className="text-secondary stroke-2 draw-line" d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,5 T100,10" strokeLinecap="round" stroke-linejoin="round"></path>
+              <path className="text-secondary stroke-2 draw-line" d="M0,25 Q10,20 20,25 T40,15 T60,20 T80,5 T100,10" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
           </div>
         </div>

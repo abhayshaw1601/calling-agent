@@ -20,7 +20,9 @@ export default function LandingPage() {
   const [liveCost, setLiveCost] = useState(0.0000);
   const { data: session } = useSession();
 
-  // Simulate call transcript typing & live cost ticking
+  const [activeStep, setActiveStep] = useState(0);
+
+  // Simulate call transcript typing, live cost ticking, and pipeline animation steps
   useEffect(() => {
     const dialogTimer = setInterval(() => {
       setActiveDialogIndex((prev) => (prev < SIMULATED_CALL_LOG.length - 1 ? prev + 1 : 0));
@@ -33,11 +35,24 @@ export default function LandingPage() {
       });
     }, 200);
 
+    const stepTimer = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % 5);
+    }, 2000);
+
     return () => {
       clearInterval(dialogTimer);
       clearInterval(costTimer);
+      clearInterval(stepTimer);
     };
   }, []);
+
+  const PIPELINE_STEPS = [
+    { name: 'Customer Outbound', icon: 'person', desc: 'Call connects via PSTN/Carrier networks', color: 'text-secondary bg-accent-blue border-secondary/20' },
+    { name: 'Twilio SIP Trunk', icon: 'call', desc: 'Audio stream piped via WebSockets', color: 'text-on-tertiary-fixed bg-accent-yellow border-outline-variant/30' },
+    { name: 'Deepgram STT', icon: 'graphic_eq', desc: 'Real-time audio transcribed to text', color: 'text-trend-up bg-accent-mint border-trend-up/20' },
+    { name: 'Groq Cloud LLM', icon: 'memory', desc: 'Conversational logic generated in ms', color: 'text-secondary bg-accent-blue border-secondary/20' },
+    { name: 'ElevenLabs TTS', icon: 'record_voice_over', desc: 'Text synthesized to high-fidelity audio', color: 'text-on-secondary-container bg-accent-purple border-outline-variant/30' }
+  ];
 
   return (
     <div className="bg-canvas-bg text-on-surface min-h-screen selection:bg-accent-blue selection:text-secondary">
@@ -97,7 +112,7 @@ export default function LandingPage() {
           <div className="lg:col-span-6 space-y-6 text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-secondary/20 bg-accent-blue/50 text-[11px] text-secondary font-bold uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-trend-up animate-pulse" />
-              Outbound Voice Campaigns
+              Interactive Outbound calling pipeline
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter leading-tight text-primary">
@@ -127,19 +142,118 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Column: Visual Mockup */}
-          <div className="lg:col-span-6 relative flex justify-center">
-            <div className="relative border border-outline-variant/60 bg-surface-card p-2 rounded-2xl shadow-soft max-w-[500px] w-full">
-              <Image 
-                src="/hero-mockup.png" 
-                alt="SnowVoice AI Live Telemetry Dashboard Mockup" 
-                width={500} 
-                height={281} 
-                className="rounded-xl border border-surface-container object-cover aspect-video"
-                priority
-              />
+          {/* Right Column: Visual Interactive SVG Pipeline Widget */}
+          <div className="lg:col-span-6 relative flex flex-col justify-center items-center">
+            <div className="relative border border-outline-variant/60 bg-surface-card p-6 rounded-2xl shadow-soft w-full max-w-[500px]">
+              
+              {/* Pipeline Step Header */}
+              <div className="mb-4 flex items-center justify-between border-b border-surface-container pb-3">
+                <div>
+                  <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Active Pipeline Stage</span>
+                  <h4 className="font-semibold text-sm text-primary transition-all mt-0.5">{PIPELINE_STEPS[activeStep].name}</h4>
+                </div>
+                <span className="text-[10px] font-mono bg-surface-container-low px-2 py-0.5 rounded text-on-surface-variant/80">
+                  Step {activeStep + 1} / 5
+                </span>
+              </div>
+
+              {/* Interactive SVG Network Map */}
+              <div className="relative h-64 w-full">
+                <svg className="w-full h-full" viewBox="0 0 450 320">
+                  {/* Closed Loop Connection Path */}
+                  <path 
+                    id="loopPath"
+                    d="M 60,160 Q 110,70 200,60 Q 290,70 380,110 L 380,210 Q 290,250 200,260 Q 110,250 60,160 Z" 
+                    fill="none" 
+                    stroke="#e5e2e1" 
+                    strokeWidth="2" 
+                    strokeDasharray="4 4"
+                  />
+
+                  {/* Pulsing highlights for paths connecting active steps */}
+                  <path 
+                    d="M 60,160 Q 110,70 200,60 Q 290,70 380,110 L 380,210 Q 290,250 200,260 Q 110,250 60,160 Z" 
+                    fill="none" 
+                    stroke="#415aa6" 
+                    strokeWidth="2" 
+                    strokeDasharray="40 250"
+                    className="opacity-60"
+                  >
+                    <animate 
+                      attributeName="stroke-dashoffset" 
+                      values="290;0" 
+                      dur="5s" 
+                      repeatCount="indefinite" 
+                    />
+                  </path>
+
+                  {/* Nodes */}
+                  
+                  {/* 1. Customer (Left) */}
+                  <g transform="translate(60,160)" className="cursor-pointer">
+                    <circle r="22" className={`transition-all duration-500 fill-white stroke-2 ${activeStep === 0 ? 'stroke-secondary scale-110 shadow-soft' : 'stroke-outline-variant/60'}`} />
+                    <circle r="18" className={`transition-all duration-500 ${activeStep === 0 ? 'fill-accent-blue' : 'fill-surface-container-low'}`} />
+                    <text className={`material-symbols-outlined text-[16px] transition-colors duration-500 ${activeStep === 0 ? 'fill-secondary text-secondary' : 'fill-on-surface-variant text-on-surface-variant'}`} textAnchor="middle" dy="6">person</text>
+                    <text textAnchor="middle" y="36" className="text-[9px] font-bold fill-on-surface-variant tracking-wide">Callee</text>
+                  </g>
+
+                  {/* 2. Twilio (Top Center) */}
+                  <g transform="translate(200,60)" className="cursor-pointer">
+                    <circle r="22" className={`transition-all duration-500 fill-white stroke-2 ${activeStep === 1 ? 'stroke-primary scale-110 shadow-soft' : 'stroke-outline-variant/60'}`} />
+                    <circle r="18" className={`transition-all duration-500 ${activeStep === 1 ? 'fill-accent-yellow' : 'fill-surface-container-low'}`} />
+                    <text className={`material-symbols-outlined text-[16px] transition-colors duration-500 ${activeStep === 1 ? 'text-on-tertiary-fixed' : 'text-on-surface-variant/80'}`} textAnchor="middle" dy="6">call</text>
+                    <text textAnchor="middle" y="-30" className="text-[9px] font-bold fill-on-surface-variant tracking-wide">Twilio Trunk</text>
+                  </g>
+
+                  {/* 3. Deepgram (Right Top) */}
+                  <g transform="translate(380,110)" className="cursor-pointer">
+                    <circle r="22" className={`transition-all duration-500 fill-white stroke-2 ${activeStep === 2 ? 'stroke-trend-up scale-110 shadow-soft' : 'stroke-outline-variant/60'}`} />
+                    <circle r="18" className={`transition-all duration-500 ${activeStep === 2 ? 'fill-accent-mint' : 'fill-surface-container-low'}`} />
+                    <text className={`material-symbols-outlined text-[16px] transition-colors duration-500 ${activeStep === 2 ? 'text-trend-up' : 'text-on-surface-variant/80'}`} textAnchor="middle" dy="6">graphic_eq</text>
+                    <text textAnchor="middle" x="38" dy="4" className="text-[9px] font-bold fill-on-surface-variant tracking-wide">Deepgram</text>
+                  </g>
+
+                  {/* 4. Groq (Right Bottom) */}
+                  <g transform="translate(380,210)" className="cursor-pointer">
+                    <circle r="22" className={`transition-all duration-500 fill-white stroke-2 ${activeStep === 3 ? 'stroke-secondary scale-110 shadow-soft' : 'stroke-outline-variant/60'}`} />
+                    <circle r="18" className={`transition-all duration-500 ${activeStep === 3 ? 'fill-accent-blue' : 'fill-surface-container-low'}`} />
+                    <text className={`material-symbols-outlined text-[16px] transition-colors duration-500 ${activeStep === 3 ? 'text-secondary' : 'text-on-surface-variant/80'}`} textAnchor="middle" dy="6">memory</text>
+                    <text textAnchor="middle" x="30" dy="4" className="text-[9px] font-bold fill-on-surface-variant tracking-wide">Groq LLM</text>
+                  </g>
+
+                  {/* 5. ElevenLabs (Bottom Center) */}
+                  <g transform="translate(200,260)" className="cursor-pointer">
+                    <circle r="22" className={`transition-all duration-500 fill-white stroke-2 ${activeStep === 4 ? 'stroke-secondary scale-110 shadow-soft' : 'stroke-outline-variant/60'}`} />
+                    <circle r="18" className={`transition-all duration-500 ${activeStep === 4 ? 'fill-accent-purple' : 'fill-surface-container-low'}`} />
+                    <text className={`material-symbols-outlined text-[16px] transition-colors duration-500 ${activeStep === 4 ? 'text-on-secondary-container' : 'text-on-surface-variant/80'}`} textAnchor="middle" dy="6">record_voice_over</text>
+                    <text textAnchor="middle" y="34" className="text-[9px] font-bold fill-on-surface-variant tracking-wide">ElevenLabs</text>
+                  </g>
+
+                  {/* Circulating Glowing Signal Bubbles */}
+                  <circle r="4" fill="#415aa6" className="filter drop-shadow-[0_0_4px_rgba(65,90,166,0.6)]">
+                    <animateMotion dur="5s" repeatCount="indefinite">
+                      <mpath href="#loopPath" />
+                    </animateMotion>
+                  </circle>
+                  <circle r="4" fill="#4AA785" className="filter drop-shadow-[0_0_4px_rgba(74,167,133,0.6)]">
+                    <animateMotion dur="5s" begin="2.5s" repeatCount="indefinite">
+                      <mpath href="#loopPath" />
+                    </animateMotion>
+                  </circle>
+
+                </svg>
+              </div>
+
+              {/* Step Details description text footer */}
+              <div className="mt-2 text-center">
+                <p className="text-xs text-on-surface-variant font-medium leading-relaxed italic min-h-[36px]">
+                  "{PIPELINE_STEPS[activeStep].desc}"
+                </p>
+              </div>
+
             </div>
           </div>
+
         </div>
       </section>
 

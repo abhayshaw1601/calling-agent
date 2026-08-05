@@ -8,7 +8,7 @@ import { useSession } from 'next-auth/react';
 export default function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  
+
   // Check if we are on landing page, login page, or signup page
   const isLandingOrAuthRoute = ['/', '/login', '/signup'].includes(pathname);
 
@@ -34,7 +34,7 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
   return (
     <div className="min-h-screen flex w-full bg-canvas-bg font-body-md text-on-surface antialiased overflow-hidden">
       <NavSidebar />
-      <div className="flex-1 flex flex-col ml-[240px] h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col ml-[80px] h-screen overflow-hidden">
         {/* TopNavBar */}
         <header className="bg-surface shadow-soft flex justify-between items-center h-16 px-gutter border-b border-outline-variant z-10 shrink-0">
           <div className="flex items-center gap-4">
@@ -45,13 +45,13 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
               <span className="material-symbols-outlined text-[22px]">notifications</span>
             </button>
             <div className="flex items-center gap-3 pl-2 border-l border-outline-variant">
-              <div className="w-9 h-9 rounded-full bg-accent-purple text-primary flex items-center justify-center font-semibold text-sm">
+              {/* <div className="w-9 h-9 rounded-full bg-accent-purple text-primary flex items-center justify-center font-semibold text-sm">
                 {userInitials}
-              </div>
-              <div className="hidden md:block text-left">
+              </div> */}
+              {/* <div className="hidden md:block text-left">
                 <div className="font-label-md text-label-md font-semibold text-primary">{session?.user?.name || 'User'}</div>
                 <div className="text-[10px] text-on-surface-variant">{session?.user?.email || 'user@snowvoice.ai'}</div>
-              </div>
+              </div> */}
             </div>
           </div>
         </header>
@@ -63,4 +63,3 @@ export default function AppLayoutWrapper({ children }: { children: React.ReactNo
     </div>
   );
 }
-

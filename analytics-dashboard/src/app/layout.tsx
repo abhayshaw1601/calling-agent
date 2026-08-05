@@ -3,10 +3,16 @@ import React from "react";
 import "./globals.css";
 import AuthProvider from "@/components/SessionProvider";
 import AppLayoutWrapper from "@/components/AppLayoutWrapper";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "SnowVoice AI - Campaign Manager",
   description: "Real-time cost analysis, wallet credits, and campaign management for SnowVoice AI agents",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -20,6 +26,7 @@ export default function RootLayout({
         <AuthProvider>
           <AppLayoutWrapper>{children}</AppLayoutWrapper>
         </AuthProvider>
+        <Script src="https://cdn.lordicon.com/lordicon.js" strategy="afterInteractive" />
       </body>
     </html>
   );
